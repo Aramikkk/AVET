@@ -46,6 +46,42 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "avet/vpn").setMethodCallHandler { call, result ->
             when (call.method) {
                 "dir" -> result.success(filesDir.path)
+                // the self-update: where the APK is downloaded to, the installed build, its SHA-256, the system installer
+                "updateDir" -> {
+                    val d = java.io.File(cacheDir, "avet_update")
+                    d.mkdirs()
+                    result.success(d.path)
+                }
+                "version" -> {
+                    val info = packageManager.getPackageInfo(packageName, 0)
+                    val code = if (android.os.Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong()
+                    result.success(mapOf("name" to (info.versionName ?: ""), "code" to code))
+                }
+                "sha256" -> {
+                    val path = call.argument<String>("path")
+                    Thread {
+                        val hex = try {
+                            val md = java.security.MessageDigest.getInstance("SHA-256")
+                            java.io.File(path!!).inputStream().use { input ->
+                                val buf = ByteArray(1 shl 16)
+                                while (true) {
+                                    val n = input.read(buf)
+                                    if (n < 0) break
+                                    md.update(buf, 0, n)
+                                }
+                            }
+                            md.digest().joinToString("") { "%02x".format(it) }
+                        } catch (e: Exception) {
+                            ""
+                        }
+                        runOnUiThread { result.success(hex) }
+                    }.start()
+                }
+                "install" -> {
+                    val path = call.argument<String>("path")
+                    val allowSettings = call.argument<Boolean>("allowSettings") ?: true
+                    result.success(if (path == null) "error" else try { installApk(path, allowSettings) } catch (e: Exception) { "error" })
+                }
                 // the names of the apps by their uids (the core names a connection's app by its uid)
                 "appLabels" -> {
                     val out = HashMap<String, String>()
@@ -214,5 +250,26 @@ class MainActivity : FlutterActivity() {
             pendingPermission?.success(resultCode == RESULT_OK)
             pendingPermission = null
         }
+    }
+    /** Hands the downloaded APK to the system installer: "ok", "permission" (the page that allows it was opened) or "error". */
+    private fun installApk(path: String, allowSettings: Boolean): String {
+        if (android.os.Build.VERSION.SDK_INT >= 26 && !packageManager.canRequestPackageInstalls()) {
+            if (allowSettings) {
+                startActivity(
+                    Intent(
+                        android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        android.net.Uri.parse("package:$packageName"),
+                    ),
+                )
+            }
+            return "permission"
+        }
+        val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.updates", java.io.File(path))
+        startActivity(
+            Intent(Intent.ACTION_VIEW)
+                .setDataAndType(uri, "application/vnd.android.package-archive")
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
+        )
+        return "ok"
     }
 }

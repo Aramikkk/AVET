@@ -19,6 +19,7 @@ import 'package:avet/ui/app_picker.dart';
 import 'package:avet/ui/motion.dart';
 import 'package:avet/ui/home_page.dart' show serversWord;
 import 'package:avet/ui/toast.dart';
+import 'package:avet/ui/update_block.dart';
 import 'package:avet/ui/backdrops.dart';
 import 'package:avet/ui/widgets.dart';
 import 'package:avet/ui/wordmark.dart';
@@ -2560,27 +2561,7 @@ class _About extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 22),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Обновление программы',
-                style: mono(context, 13.5, weight: FontWeight.w700),
-              ),
-            ),
-            TextButton(
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Это тестовая сборка: обновления пока не публикуются',
-                  ),
-                  duration: Duration(seconds: 3),
-                ),
-              ),
-              child: const Text('Проверить'),
-            ),
-          ],
-        ),
+        const UpdateBlock(),
         const SizedBox(height: 14),
         Text(
           'ЧТО НОВОГО',
