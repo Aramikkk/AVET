@@ -45,6 +45,7 @@ class RuleSettings {
     this.global = false,
     this.sharing = false,
     this.superLight = false,
+    this.tintIcon = false,
     this.theme = 0,
     this.slowMs = 250,
     this.slowMsLte = 500,
@@ -148,6 +149,9 @@ class RuleSettings {
 
   /// the plain screen: only the essentials
   final bool superLight;
+
+  /// the launcher icon takes the colour of the accent (one of the icon aliases of the manifest is shown)
+  final bool tintIcon;
 
   /// the look: 0 as the system's, 1 light, 2 dark
   final int theme;
@@ -403,6 +407,7 @@ class RuleSettings {
     bool? global,
     bool? sharing,
     bool? superLight,
+    bool? tintIcon,
     int? theme,
     int? slowMs,
     int? slowMsLte,
@@ -492,6 +497,7 @@ class RuleSettings {
     global: global ?? this.global,
     sharing: sharing ?? this.sharing,
     superLight: superLight ?? this.superLight,
+    tintIcon: tintIcon ?? this.tintIcon,
     theme: theme ?? this.theme,
     slowMs: slowMs ?? this.slowMs,
     slowMsLte: slowMsLte ?? this.slowMsLte,
@@ -603,6 +609,7 @@ class RuleSettings {
     'global': global,
     'sharing': sharing,
     'superLight': superLight,
+    'tintIcon': tintIcon,
     'theme': theme,
     'slowMs': slowMs,
     'slowMsLte': slowMsLte,
@@ -704,6 +711,7 @@ class RuleSettings {
     global: r['global'] == true,
     sharing: r['sharing'] == true,
     superLight: r['superLight'] == true,
+    tintIcon: r['tintIcon'] == true,
     theme: r['theme'] as int? ?? 0,
     slowMs: r['slowMs'] as int? ?? 250,
     slowMsLte: r['slowMsLte'] as int? ?? 500,
@@ -1321,6 +1329,7 @@ class Engine extends Notifier<EngineState> {
     final st = await _vpn.invokeMapMethod<String, Object?>('status');
     final running = st?['running'] == true;
     state = state.copyWith(ready: true, rules: rules, subs: subs);
+    unawaited(syncIcon());
     unawaited(_loadHomeCountry());
     _apply(subs);
     state = state.copyWith(phase: running ? Phase.on : Phase.off);
@@ -1919,6 +1928,24 @@ class Engine extends Notifier<EngineState> {
   void setRules(RuleSettings rules) {
     state = state.copyWith(rules: rules);
     _rulesFile.writeAsStringSync(jsonEncode(rules.toJson()));
+    unawaited(syncIcon());
+  }
+
+  /// the icon the launcher shows now: -1 the usual one, else the palette place of the accent it is tinted in (-2: not told yet)
+  int _iconShown = -2;
+
+  /// Shows the launcher icon in the colour of the accent when the setting asks for it (the manifest has an alias of the
+  /// activity for each accent; the system takes a few seconds to redraw the icon), else the usual one.
+  Future<void> syncIcon() async {
+    final r = state.rules;
+    final want = !r.tintIcon
+        ? -1
+        : (r.accent >= 0 ? r.accent : (r.style >= 1 ? 18 : 0));
+    if (want == _iconShown) return;
+    _iconShown = want;
+    try {
+      await _vpn.invokeMethod<void>('setIcon', {'index': want});
+    } catch (_) {}
   }
 
   /// The id of this install that providers limit devices by (made once, kept in the app's folder).

@@ -47,6 +47,11 @@ class MainActivity : FlutterActivity() {
             when (call.method) {
                 "dir" -> result.success(filesDir.path)
                 // the self-update: where the APK is downloaded to, the installed build, its SHA-256, the system installer
+                // the launcher icon: -1 the usual one, else the one tinted in the accent of that palette place
+                "setIcon" -> {
+                    val index = call.argument<Int>("index") ?: -1
+                    result.success(setLauncherIcon(index))
+                }
                 "updateDir" -> {
                     val d = java.io.File(cacheDir, "avet_update")
                     d.mkdirs()
@@ -271,5 +276,28 @@ class MainActivity : FlutterActivity() {
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
         )
         return "ok"
+    }
+    /** The launcher entry is an alias of this activity; exactly one of them is enabled. Returns whether the icon was changed. */
+    private fun setLauncherIcon(index: Int): Boolean {
+        val want = if (index < 0) "IconDefault" else "IconA$index"
+        val names = listOf("IconDefault") + (0 until 24).map { "IconA$it" }
+        if (want !in names) return false
+        val pm = packageManager
+        fun cn(name: String) = android.content.ComponentName(packageName, "$packageName.$name")
+        fun enabled(name: String): Boolean {
+            val st = pm.getComponentEnabledSetting(cn(name))
+            // "default" is what the manifest says: only IconDefault is enabled there
+            return st == android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED ||
+                (st == android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DEFAULT && name == "IconDefault")
+        }
+        if (enabled(want) && names.none { it != want && enabled(it) }) return false
+        // the new one first, then the others off, so that the app is never without an entry
+        pm.setComponentEnabledSetting(cn(want), android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED, android.content.pm.PackageManager.DONT_KILL_APP)
+        for (n in names) {
+            if (n != want && enabled(n)) {
+                pm.setComponentEnabledSetting(cn(n), android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED, android.content.pm.PackageManager.DONT_KILL_APP)
+            }
+        }
+        return true
     }
 }

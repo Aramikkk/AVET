@@ -83,4 +83,12 @@ void main() {
     expect(back.switchedTo(2).depth, 0);
     expect(back.switchedTo(0).bg, 3);
   });
+  test('the launcher icon setting is kept and defaults to off', () {
+    expect(const RuleSettings().tintIcon, isFalse);
+    final on = RuleSettings.fromJson(
+      (const RuleSettings().copyWith(tintIcon: true)).toJson(),
+    );
+    expect(on.tintIcon, isTrue);
+    expect(RuleSettings.fromJson(const {}).tintIcon, isFalse);
+  });
 }

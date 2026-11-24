@@ -3602,6 +3602,20 @@ class _Themes extends ConsumerWidget {
             ],
           ),
         ),
+        const SizedBox(height: 10),
+        Paper(
+          radius: 18,
+          padding: EdgeInsets.zero,
+          child: _switch(
+            context,
+            'Иконка в цвет акцента',
+            r.tintIcon,
+            (v) => engine.setRules(r.copyWith(tintIcon: v)),
+            hint:
+                'Иконка на рабочем столе повторяет цвет акцента. Система обновляет её не сразу, на это время иконка может пропасть',
+            icon: Icons.palette_outlined,
+          ),
+        ),
         _caption(context, 'МАСШТАБ И ШРИФТ'),
         Paper(
           radius: 18,
