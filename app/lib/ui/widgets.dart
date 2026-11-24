@@ -357,11 +357,32 @@ class _StripesPainter extends CustomPainter {
     final line = Paint()
       ..color = accent.withValues(alpha: .9)
       ..strokeWidth = 2;
-    for (final x in [size.width * .18, size.width * .52, size.width * .9]) {
+    // the bright lines run over the whole sheet (not three of them): one every ~118 px, each with a strength of its own
+    const strengths = [1.0, .45, .75, .32, .6, .9, .4, .68];
+    final step = size.width * .29;
+    var i = 0;
+    // (the first line would show only a scrap of itself in the bottom left corner: it is left out)
+    i = 1;
+    for (var x = -slope + step * 1.4; x < size.width; x += step, i++) {
+      final s = strengths[i % strengths.length];
       final to = Offset(x + slope, size.height);
-      canvas.drawLine(Offset(x, 0), to, halo);
-      canvas.drawLine(Offset(x, 0), to, glow);
-      canvas.drawLine(Offset(x, 0), to, line);
+      canvas.drawLine(
+        Offset(x, 0),
+        to,
+        halo..color = accent.withValues(alpha: .10 * s),
+      );
+      canvas.drawLine(
+        Offset(x, 0),
+        to,
+        glow..color = accent.withValues(alpha: .22 * s),
+      );
+      canvas.drawLine(
+        Offset(x, 0),
+        to,
+        line
+          ..color = accent.withValues(alpha: .9 * s)
+          ..strokeWidth = s > .6 ? 2 : 1.4,
+      );
     }
   }
 

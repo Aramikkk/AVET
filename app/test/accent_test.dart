@@ -66,21 +66,21 @@ void main() {
     final fresh = RuleSettings.fromJson({});
     expect([fresh.style, fresh.depth, fresh.bg, fresh.digits], [0, 3, 3, 0]);
     expect(Palette.accentNames[fresh.accent], 'Бургунди');
-    // Studio begins flat and lime, on the theme's own sheet; Mosaic with relief, icy and the mosaic sheet
+    // every look begins with Liquid: Studio lime, on the theme's own sheet; Mosaic icy, on the mosaic sheet
     final studio = fresh.switchedTo(2);
-    expect([studio.depth, studio.bg], [0, 2]);
+    expect([studio.depth, studio.bg], [3, 2]);
     expect(Palette.accentNames[studio.accent], 'Лайм');
     final mosaic = studio.switchedTo(1);
-    expect([mosaic.depth, mosaic.bg], [1, 5]);
+    expect([mosaic.depth, mosaic.bg], [3, 5]);
     expect(Palette.accentNames[mosaic.accent], 'Ледяной');
     // a change made in a look stays with that look
-    final changed = mosaic.copyWith(depth: 2, bg: 0).switchedTo(0);
+    final changed = mosaic.copyWith(depth: 1, bg: 0).switchedTo(0);
     expect([changed.depth, changed.bg], [3, 3]);
     final again = changed.switchedTo(1);
-    expect([again.depth, again.bg], [2, 0]);
+    expect([again.depth, again.bg], [1, 0]);
     // and it is stored
     final back = RuleSettings.fromJson(again.toJson());
-    expect(back.switchedTo(2).depth, 0);
+    expect(back.switchedTo(2).depth, 3);
     expect(back.switchedTo(0).bg, 3);
   });
   test('the launcher icon setting is kept and defaults to off', () {

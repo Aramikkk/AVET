@@ -3482,7 +3482,7 @@ class _Themes extends ConsumerWidget {
                 child: Text(switch (r.style) {
                   2 =>
                     'Studio: белые плитки на фоне из наклонных линий, кнопка-кольцо из пунктира.',
-                  1 => 'Mosaic: сплошные плитки, яркий пинг, крупные цифры.',
+                  1 => 'Mosaic: крупные плитки, яркий пинг, крупные цифры.',
                   _ =>
                     'Glass: прозрачные блоки на мягком цветном фоне, один акцент.',
                 }, style: desc(context, 11.5)),
@@ -3500,25 +3500,19 @@ class _Themes extends ConsumerWidget {
               SegmentedChoice(
                 height: 40,
                 compact: true,
-                labels: const ['Плоско', 'Рельеф', 'Стекло', 'Liquid'],
-                icons: const [
-                  Icons.circle,
-                  Icons.circle,
-                  Icons.circle,
-                  Icons.circle,
-                ],
-                selected: r.depth.clamp(0, 3),
+                labels: const ['Плоско', 'Рельеф', 'Liquid'],
+                icons: const [Icons.circle, Icons.circle, Icons.circle],
+                // (the volumes are 0 flat, 1 relief and 3 Liquid: 2, the glass, is gone)
+                selected: r.depth >= 2 ? 2 : r.depth.clamp(0, 1),
                 onChanged: (i) => ref
                     .read(engineProvider.notifier)
-                    .setRules(r.copyWith(depth: i)),
+                    .setRules(r.copyWith(depth: i == 2 ? 3 : i)),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(2, 10, 2, 0),
                 child: Text(switch (r.depth) {
                   1 =>
                     'Рельеф: глубокая тень, блик и подсветка акцентом по нижнему краю.',
-                  2 =>
-                    'Стекло: прозрачные блоки с яркой кромкой на мягком цветном фоне, как матовое стекло.',
                   3 =>
                     'Liquid: прозрачное стекло без заливки: ночью тёмное, днём светлое, цвет блоку даёт фон за ним.',
                   _ => 'Плоско: блоки без объёма.',

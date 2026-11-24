@@ -273,12 +273,12 @@ class RuleSettings {
   /// others wait here until their look is chosen again.
   final Map<int, List<int>> looks;
 
-  /// Where each look begins: volume (0 flat, 1 relief, 2 glass, 3 Liquid), accent (a place in Palette.accents: burgundy, icy, lime) and
-  /// the sheet (Backdrops: 3 sunset, 5 mosaic, 2 the theme's own).
+  /// Where each look begins: volume (0 flat, 1 relief, 3 Liquid; 2 was glass and is gone), accent (a place in Palette.accents:
+  /// burgundy, icy, lime) and the sheet (Backdrops: 3 sunset, 5 mosaic, 2 the theme's own). Every look begins with Liquid.
   static const presets = <int, List<int>>{
     0: [3, 4, 3],
-    1: [1, 15, 5],
-    2: [0, 11, 2],
+    1: [3, 15, 5],
+    2: [3, 11, 2],
   };
 
   /// These settings with the look [to] in use: what the look in use has is put away, and the look [to] has what it had, or
@@ -808,8 +808,12 @@ class RuleSettings {
     sleepCountLte:
         r['sleepCountLte'] as int? ?? (r['sleepCount'] as int? ?? 10),
     // (before 'depthV' 2 the volumes were relief and glass: the old relief is gone, the old glass is the relief now)
+    // (the glass volume (2) is gone: whoever had it has Liquid now)
     depth: r['depthV'] == 2
-        ? (r['depth'] as int? ?? 0).clamp(0, 3)
+        ? switch ((r['depth'] as int? ?? 0).clamp(0, 3)) {
+            2 => 3,
+            final d => d,
+          }
         : (r['depth'] as int? ?? 0) > 0
         ? 1
         : 0,
