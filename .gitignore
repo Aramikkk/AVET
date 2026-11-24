@@ -1,0 +1,11 @@
+# build output
+app/build/
+app/.dart_tool/
+core/bin/
+core/patched/
+core/*.log
+
+# local signing and secrets
+app/android/key.properties
+*.jks
+*.keystore
