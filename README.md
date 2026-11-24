@@ -1,10 +1,6 @@
 <p align="center">
-  <img src="brand/png/emblem_512.png" width="120" alt="AVET">
+  <img src="docs/showcase/hero.jpg" alt="AVET: ваш VPN не знает, что вы вышли из дома. AVET знает.">
 </p>
-
-<h1 align="center">AVET</h1>
-
-<h3 align="center">Ваш VPN не знает, что вы вышли из дома. AVET знает.</h3>
 
 <p align="center">
   На Wi-Fi одни серверы, на мобильном интернете другие, переключение само.<br>
@@ -17,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/home_anim.gif" width="260" alt="Главный экран AVET">
+  <img src="docs/home_anim.gif" width="320" alt="Главный экран AVET в движении">
 </p>
 
 ## Главная идея: у каждой сети свои серверы
@@ -51,8 +47,7 @@
 Всё важное на одном экране. Крупная цифра: отклик сети прямо сейчас и средний за сессию, под ней живая лента последних замеров. Ниже скорость загрузки и отдачи и сколько трафика ушло через VPN, а сколько напрямую. В карточке сервера видно, куда вы подключены: флаг, страна, подписка и протокол. Блок «Мульти серверы» показывает отклик для Instagram, WhatsApp, Telegram, YouTube, Claude и ChatGPT, у каждого свой сервер. Внизу пульт: потери пакетов, большая кнопка включения, число серверов в работе и тип сети (Wi-Fi или LTE). Сверху режимы одним касанием: Раздача, Суперлайт, Глобально.
 
 <p align="center">
-  <img src="docs/screenshots/dark_glass_1_home.png" width="40%" alt="Тёмная тема">
-  <img src="docs/screenshots/light_glass_1_home.png" width="40%" alt="Светлая тема">
+  <img src="docs/showcase/glass_1_home.jpg" width="80%" alt="Тёмная и светлая темы">
 </p>
 
 ### Статистика
@@ -60,8 +55,7 @@
 Скорость и отклик сейчас и в среднем, график за выбранный период (минута, 10 минут, час, сутки, всё время) и столбики пинга с цветом по качеству. Внизу потери за сессию. Видно, как сеть вела себя, пока вы не смотрели в телефон: статистика собирается и при закрытом приложении.
 
 <p align="center">
-  <img src="docs/screenshots/dark_glass_2_stats.png" width="40%" alt="Тёмная тема">
-  <img src="docs/screenshots/light_glass_2_stats.png" width="40%" alt="Светлая тема">
+  <img src="docs/showcase/glass_2_stats.jpg" width="80%" alt="Тёмная и светлая темы">
 </p>
 
 ### Соединения
@@ -69,8 +63,7 @@
 Кто и куда ходит прямо сейчас. Вверху счётчики: сколько соединений открыто, сколько идёт через VPN, сколько напрямую. Переключатели «Приложения» и «Сайты», фильтр «Все / VPN / Напрямую». У каждого приложения иконка, страны серверов, число сайтов и объём трафика.
 
 <p align="center">
-  <img src="docs/screenshots/dark_glass_3_connections.png" width="40%" alt="Тёмная тема">
-  <img src="docs/screenshots/light_glass_3_connections.png" width="40%" alt="Светлая тема">
+  <img src="docs/showcase/glass_3_connections.jpg" width="80%" alt="Тёмная и светлая темы">
 </p>
 
 ### Топология
@@ -78,8 +71,7 @@
 Маршруты как схема: слева приложения, посередине сайты и сервисы, справа страны, куда уходит трафик, с флагами. Два режима: по числу соединений и по объёму. Коснитесь приложения, и его путь подсветится, а остальные притихнут.
 
 <p align="center">
-  <img src="docs/screenshots/dark_glass_4_topology.png" width="40%" alt="Тёмная тема">
-  <img src="docs/screenshots/light_glass_4_topology.png" width="40%" alt="Светлая тема">
+  <img src="docs/showcase/glass_4_topology.jpg" width="80%" alt="Тёмная и светлая темы">
 </p>
 
 ### Трафик
@@ -87,8 +79,7 @@
 Карта трафика плитками: чем больше приложение съело, тем крупнее плитка. Цвет подсказывает путь: акцентный через VPN, серый напрямую. На плитке иконка, объём и флаги стран, через которые шёл трафик.
 
 <p align="center">
-  <img src="docs/screenshots/dark_glass_5_traffic.png" width="40%" alt="Тёмная тема">
-  <img src="docs/screenshots/light_glass_5_traffic.png" width="40%" alt="Светлая тема">
+  <img src="docs/showcase/glass_5_traffic.jpg" width="80%" alt="Тёмная и светлая темы">
 </p>
 
 ## Настройки
@@ -100,12 +91,10 @@
 Несколько подписок сразу: перетаскивайте карточки, чтобы задать порядок, у каждой свой срок и автообновление. Для каждой сети (Wi-Fi и LTE) отдельно отмечаются страны, с пингом до каждой. Можно оставить только Европу, исключить Россию и Беларусь, выстроить цепочку серверов или подключить свой WireGuard.
 
 <p align="center">
-  <img src="docs/screenshots/dark_settings_1_subscriptions_a.png" width="28%" alt="Тёмная тема">
-  <img src="docs/screenshots/light_settings_1_subscriptions_a.png" width="28%" alt="Светлая тема">
+  <img src="docs/showcase/settings_1_subscriptions_a.jpg" width="80%" alt="Тёмная и светлая темы">
 </p>
 <p align="center">
-  <img src="docs/screenshots/dark_settings_2_sub_manage_a.png" width="28%" alt="Тёмная тема">
-  <img src="docs/screenshots/light_settings_2_sub_manage_a.png" width="28%" alt="Светлая тема">
+  <img src="docs/showcase/settings_2_sub_manage_a.jpg" width="80%" alt="Тёмная и светлая темы">
 </p>
 
 ### Автовыбор
@@ -113,8 +102,7 @@
 Четыре режима: оптимальный, быстрый, стабильный и умный. Умный учится на ваших привычках: чаще используемые страны получают плюс в очках, но скорость остаётся главным. Спящие серверы: проверяются только лучшие, остальные спят и не тратят батарею. Для Wi-Fi и мобильной сети настройки раздельные.
 
 <p align="center">
-  <img src="docs/screenshots/dark_settings_4_autoselect_a.png" width="28%" alt="Тёмная тема">
-  <img src="docs/screenshots/light_settings_4_autoselect_a.png" width="28%" alt="Светлая тема">
+  <img src="docs/showcase/settings_4_autoselect_a.jpg" width="80%" alt="Тёмная и светлая темы">
 </p>
 
 ### Маршрутизация
@@ -122,8 +110,7 @@
 Что идёт через VPN, а что напрямую: по спискам (российские сервисы напрямую, заблокированное через VPN), по приложениям и по сайтам. Свой сервер для приложения, один сервер для ИИ-сервисов, направление для отдельных сайтов.
 
 <p align="center">
-  <img src="docs/screenshots/dark_settings_5_routing_a.png" width="28%" alt="Тёмная тема">
-  <img src="docs/screenshots/light_settings_5_routing_a.png" width="28%" alt="Светлая тема">
+  <img src="docs/showcase/settings_5_routing_a.jpg" width="80%" alt="Тёмная и светлая темы">
 </p>
 
 ### Запуск, DNS и пинг
@@ -131,12 +118,10 @@
 Автозапуск, паузы дома, MTU. Автовыбор DNS проверяет серверы и берёт самый быстрый. Для пинга можно выбрать HTTP или HTTPS, адрес проверки и таймауты отдельно для Wi-Fi и LTE.
 
 <p align="center">
-  <img src="docs/screenshots/dark_settings_7_dns_a.png" width="28%" alt="Тёмная тема">
-  <img src="docs/screenshots/light_settings_7_dns_a.png" width="28%" alt="Светлая тема">
+  <img src="docs/showcase/settings_7_dns_a.jpg" width="80%" alt="Тёмная и светлая темы">
 </p>
 <p align="center">
-  <img src="docs/screenshots/dark_settings_8_ping_a.png" width="28%" alt="Тёмная тема">
-  <img src="docs/screenshots/light_settings_8_ping_a.png" width="28%" alt="Светлая тема">
+  <img src="docs/showcase/settings_8_ping_a.jpg" width="80%" alt="Тёмная и светлая темы">
 </p>
 
 ### Общие: экономия, раздача, резервная копия
@@ -144,12 +129,10 @@
 Суперлайт, ночной режим и лимит памяти ядра, блокировка рекламы и фишинга, раздача для других устройств, экспорт и импорт настроек.
 
 <p align="center">
-  <img src="docs/screenshots/dark_settings_9_general.png" width="28%" alt="Тёмная тема">
-  <img src="docs/screenshots/light_settings_9_general.png" width="28%" alt="Светлая тема">
+  <img src="docs/showcase/settings_9_general.jpg" width="80%" alt="Тёмная и светлая темы">
 </p>
 <p align="center">
-  <img src="docs/screenshots/dark_settings_9_general_3_saving.png" width="28%" alt="Тёмная тема">
-  <img src="docs/screenshots/light_settings_9_general_3_saving.png" width="28%" alt="Светлая тема">
+  <img src="docs/showcase/settings_9_general_3_saving.jpg" width="80%" alt="Тёмная и светлая темы">
 </p>
 
 ### Темы
@@ -157,8 +140,7 @@
 Три стиля, четыре объёма, шесть фонов, много акцентных цветов, четыре шрифта цифр и масштаб текста.
 
 <p align="center">
-  <img src="docs/screenshots/dark_glass_6_themes.png" width="28%" alt="Тёмная тема">
-  <img src="docs/screenshots/light_glass_6_themes.png" width="28%" alt="Светлая тема">
+  <img src="docs/showcase/glass_6_themes.jpg" width="80%" alt="Тёмная и светлая темы">
 </p>
 
 Три стиля на одних и тех же данных.
@@ -166,22 +148,19 @@
 **Glass:** прозрачные блоки на мягком цветном фоне, один акцент.
 
 <p align="center">
-  <img src="docs/screenshots/dark_glass_1_home.png" width="28%" alt="Тёмная тема">
-  <img src="docs/screenshots/light_glass_1_home.png" width="28%" alt="Светлая тема">
+  <img src="docs/showcase/glass_1_home.jpg" width="80%" alt="Тёмная и светлая темы">
 </p>
 
 **Mosaic:** сплошные плитки, яркий пинг, крупные цифры.
 
 <p align="center">
-  <img src="docs/screenshots/dark_mosaic_1_home.png" width="28%" alt="Тёмная тема">
-  <img src="docs/screenshots/light_mosaic_1_home.png" width="28%" alt="Светлая тема">
+  <img src="docs/showcase/mosaic_1_home.jpg" width="80%" alt="Тёмная и светлая темы">
 </p>
 
 **Studio:** светлый верх, чёрный низ, белые плитки.
 
 <p align="center">
-  <img src="docs/screenshots/dark_studio_1_home.png" width="28%" alt="Тёмная тема">
-  <img src="docs/screenshots/light_studio_1_home.png" width="28%" alt="Светлая тема">
+  <img src="docs/showcase/studio_1_home.jpg" width="80%" alt="Тёмная и светлая темы">
 </p>
 
 ## Установка
