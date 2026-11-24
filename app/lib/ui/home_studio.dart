@@ -185,88 +185,113 @@ class _Ping extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          // the figure on the left; what poll it is and the average in the top right corner, over the free room
+          Stack(
             children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: s.on ? Palette.red : soft,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                s.since == null
-                    ? (s.rules.pingHttp ? 'HTTP' : 'HTTPS')
-                    : '${s.rules.pingHttp ? 'HTTP' : 'HTTPS'} · ${clockText(DateTime.now().difference(s.since!))}',
-                style: Studio.label(soft, size: 11.5, w: FontWeight.w800),
-              ),
-              const Spacer(),
-              if (average != null)
-                Text(
-                  'средний $average',
-                  style: Studio.label(soft, size: 11.5, w: FontWeight.w800),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              SizedBox(
-                height: 62,
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween(end: (ping ?? 0).toDouble()),
-                  duration: reduceMotionNow
-                      ? Duration.zero
-                      : const Duration(milliseconds: 600),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, v, _) => ping == null
-                      ? Padding(
-                          padding: const EdgeInsets.only(bottom: 24),
-                          child: Container(
-                            width: 46,
-                            height: 9,
-                            decoration: BoxDecoration(
-                              color: ink.withValues(alpha: .35),
-                              borderRadius: BorderRadius.circular(5),
-                            ),
+              Positioned(
+                top: 2,
+                right: 0,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: s.on ? Palette.red : soft,
+                            shape: BoxShape.circle,
                           ),
-                        )
-                      : (s.ping ?? 0) >= s.slowAt
-                      ? Text(
-                          '${v.round()}',
-                          style: Studio.figure(62, Palette.alert),
-                        )
-                      : Text('${v.round()}', style: Studio.figure(62, ink)),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          s.since == null
+                              ? (s.rules.pingHttp ? 'HTTP' : 'HTTPS')
+                              : '${s.rules.pingHttp ? 'HTTP' : 'HTTPS'} · ${clockText(DateTime.now().difference(s.since!))}',
+                          style: Studio.label(
+                            soft,
+                            size: 11.5,
+                            w: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 28,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                for (var i = 0; i < count; i++)
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 1.5),
-                      child: _Bar(
-                        has: i >= count - shown.length,
-                        value: i >= count - shown.length
-                            ? shown[i - (count - shown.length)]
-                            : null,
-                        top: top,
-                        slowAt: s.slowAt,
-                        newest: i == count - 1,
-                        ink: ink,
-                      ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  SizedBox(
+                    height: 88,
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(end: (ping ?? 0).toDouble()),
+                      duration: reduceMotionNow
+                          ? Duration.zero
+                          : const Duration(milliseconds: 600),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, v, _) => ping == null
+                          ? Align(
+                              // loose: a Container inside the tight box would be stretched to a square
+                              alignment: Alignment.centerLeft,
+                              child: Container(
+                                width: 46,
+                                height: 9,
+                                decoration: BoxDecoration(
+                                  color: ink.withValues(alpha: .35),
+                                  borderRadius: BorderRadius.circular(5),
+                                ),
+                              ),
+                            )
+                          : (s.ping ?? 0) >= s.slowAt
+                          ? Text(
+                              '${v.round()}',
+                              style: Studio.figure(88, Palette.alert),
+                            )
+                          : Text('${v.round()}', style: Studio.figure(88, ink)),
                     ),
                   ),
-              ],
+                ],
+              ),
+            ],
+          ),
+          // the average under the figure
+          if (average != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                'средний $average',
+                style: Studio.label(soft, size: 12.5, w: FontWeight.w800),
+              ),
+            ),
+          const SizedBox(height: 10),
+          // the scale gives way when the block has less room than the figure and the scale ask for
+          Flexible(
+            child: SizedBox(
+              height: 44,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  for (var i = 0; i < count; i++)
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.zero,
+                        child: _Bar(
+                          has: i >= count - shown.length,
+                          value: i >= count - shown.length
+                              ? shown[i - (count - shown.length)]
+                              : null,
+                          top: top,
+                          slowAt: s.slowAt,
+                          newest: i == count - 1,
+                          ink: ink,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ],
@@ -317,16 +342,16 @@ class _Bar extends StatelessWidget {
             ? Duration.zero
             : const Duration(milliseconds: 450),
         curve: Curves.easeOutCubic,
-        builder: (context, f, _) => FractionallySizedBox(
-          heightFactor: f,
-          widthFactor: 1,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: colour,
-              borderRadius: BorderRadius.circular(3),
-              border: newest && has && !slow
-                  ? Border.all(color: Studio.black(isDark(context)), width: 1.4)
-                  : null,
+        // a thin stroke like the scale of an instrument
+        builder: (context, f, _) => SizedBox(
+          width: 3,
+          child: FractionallySizedBox(
+            heightFactor: f,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: colour,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
         ),
@@ -351,11 +376,10 @@ class _Traffic extends StatelessWidget {
     final direct = _bytes(s.directBytes);
     final total = s.vpnBytes + s.directBytes;
     final share = total == 0 ? 0 : (s.vpnBytes * 100 / total).round();
-    // with the glass volume on this block is glass like the others (the ink of the sheet on it), not a black one
-    final glass = Palette.depthAt(context) >= 2;
-    final soft = glass ? Palette.soft(dark) : Studio.onBlackSoft;
-    final hi = glass ? Palette.ink(dark) : Studio.onBlack;
-    final line = glass ? Palette.ink(dark) : Colors.white;
+    // the block has the fill of the other tiles (the ink of the sheet on it), not a black plate
+    final soft = Palette.soft(dark);
+    final hi = Palette.ink(dark);
+    final line = Palette.ink(dark);
     Widget speed(IconData icon, String caption, (String, String) v, Color c) =>
         Expanded(
           child: Column(
@@ -417,10 +441,7 @@ class _Traffic extends StatelessWidget {
               const SizedBox(width: 3),
               Expanded(
                 flex: math.max(100 - share, 3),
-                child: Container(
-                  height: 8,
-                  color: line.withValues(alpha: glass ? .2 : .3),
-                ),
+                child: Container(height: 8, color: line.withValues(alpha: .2)),
               ),
             ],
           ),
@@ -456,21 +477,11 @@ class _Traffic extends StatelessWidget {
         ),
       ],
     );
-    if (glass) {
-      return Studio.box(
-        context,
-        content,
-        padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
-        radius: 30,
-      );
-    }
-    return Container(
+    return Studio.box(
+      context,
+      content,
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
-      decoration: BoxDecoration(
-        color: Studio.black(dark),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: content,
+      radius: 30,
     );
   }
 }
@@ -516,7 +527,7 @@ class _Servers extends ConsumerWidget {
       required VoidCallback onTap,
       required bool chosen,
     }) {
-      final fg = chosen ? Studio.onBlack : ink;
+      final fg = ink;
       final content = Row(
         children: [
           lead(chosen),
@@ -543,22 +554,20 @@ class _Servers extends ConsumerWidget {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: onTap,
-          child: chosen
-              ? Container(
-                  padding: const EdgeInsets.fromLTRB(10, 0, 16, 0),
-                  decoration: BoxDecoration(
-                    color: Studio.black(dark),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  alignment: Alignment.center,
-                  child: content,
-                )
-              : Studio.box(
-                  context,
-                  Center(child: content),
-                  padding: const EdgeInsets.fromLTRB(10, 0, 16, 0),
-                  radius: 24,
-                ),
+          // the chosen row keeps the fill of the others; the accent outline marks it
+          child: DecoratedBox(
+            position: DecorationPosition.foreground,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              border: chosen ? Border.all(color: Palette.red, width: 2) : null,
+            ),
+            child: Studio.box(
+              context,
+              Center(child: content),
+              padding: const EdgeInsets.fromLTRB(10, 0, 16, 0),
+              radius: 24,
+            ),
+          ),
         ),
       );
     }

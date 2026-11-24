@@ -343,11 +343,13 @@ class _Tiles extends StatelessWidget {
             color: solid ? Palette.onAccent : Palette.red,
           ),
         );
-        // the VPN's tile is the opposite of the page, as the panel under the blocks is
-        // (by night another shade of dark, a graphite with a blue breath, not a light tile)
-        const invInk = Color(0xFFF2F2EE);
-        const invSoft = Color(0xFF9A9A95);
-        final invFill = dark ? const Color(0xFF2B2D35) : Palette.ink(false);
+        // the VPN's tile differs from the others by its tint: by day white with a bluish breath, by night a graphite with
+        // a blue breath
+        final invInk = dark ? const Color(0xFFF2F2EE) : Palette.ink(false);
+        final invSoft = dark ? const Color(0xFF9A9A95) : Palette.soft(false);
+        final invFill = dark
+            ? const Color(0xFF2B2D35)
+            : const Color(0xFFE6EEFB);
         Widget row() => Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:avet/state/engine.dart';
 import 'package:avet/ui/home_mosaic.dart';
@@ -376,17 +377,15 @@ class _Dock extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(engineProvider);
     final dark = isDark(context);
-    // the look of the panel itself (Bento's is the opposite of the page, Studio's by day is black)
-    final dockDark = s.rules.style == 1
-        ? !dark
-        : (s.rules.style == 2 && !dark ? true : dark);
+    // the look of the panel itself (Bento's is the opposite of the page; Studio's is white by day, like its tiles)
+    final dockDark = s.rules.style == 1 ? !dark : dark;
     final ink = Palette.ink(dockDark);
     // only the servers of the network the phone is on (the whitelist ones on mobile data)
     final answering = s.answering.length;
     final total = s.shown.length;
     final bottom = MediaQuery.viewPaddingOf(context).bottom;
-    // Studio: a black bottom under the light top, whatever the day
-    final black = s.rules.style == 2 && !dark;
+    // Studio's panel is white on white by day: a thin line holds it apart from the page
+    final outlined = s.rules.style == 2;
     // Bento: the panel is the opposite of the page: dark by day, light by night
     final inverted = s.rules.style == 1;
     final dock = Container(
@@ -395,11 +394,12 @@ class _Dock extends ConsumerWidget {
       decoration: BoxDecoration(
         color: inverted
             ? (dark ? const Color(0xFFF2F2EE) : const Color(0xFF151517))
-            : black
-            ? const Color(0xFF151517)
             : (dark ? const Color(0xFF1E1E1F) : Colors.white),
         // no shadow under the panel: it is flat in every look
         borderRadius: BorderRadius.circular(44),
+        border: outlined
+            ? Border.all(color: Palette.ink(dark).withValues(alpha: .12))
+            : null,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -604,11 +604,11 @@ class _Dock extends ConsumerWidget {
         ],
       ),
     );
-    return black || inverted
+    return inverted
         ? Theme(
-            data: Theme.of(context).copyWith(
-              brightness: black || !dark ? Brightness.dark : Brightness.light,
-            ),
+            data: Theme.of(
+              context,
+            ).copyWith(brightness: !dark ? Brightness.dark : Brightness.light),
             child: dock,
           )
         : dock;
@@ -712,152 +712,322 @@ class _MosaicTop extends ConsumerWidget {
     final dark = isDark(context);
     final ink = Palette.ink(dark);
     final soft = Palette.soft(dark);
+    final studio = Palette.style == 2;
     Widget side(
       IconData icon,
       String value,
       String label, {
       VoidCallback? onTap,
-    }) => Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 30, color: soft),
-                const SizedBox(width: 10),
-                value == '—'
-                    ? Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Opacity(
-                            opacity: 0,
-                            child: Text(
-                              '0',
-                              style: TextStyle(
-                                fontFamily: 'Unbounded',
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -.5,
-                                fontSize: 26,
-                                color: ink,
-                              ),
+      Widget? glyph,
+    }) => GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              glyph ?? Icon(icon, size: 30, color: studio ? Palette.red : soft),
+              const SizedBox(width: 10),
+              value == '—'
+                  ? Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Opacity(
+                          opacity: 0,
+                          child: Text(
+                            '0',
+                            style: TextStyle(
+                              fontFamily: 'Unbounded',
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -.5,
+                              fontSize: 26,
+                              color: ink,
                             ),
                           ),
-                          Container(
-                            width: 26,
-                            height: 5,
-                            color: ink.withValues(alpha: .6),
-                          ),
-                        ],
-                      )
-                    : Text(
-                        value,
-                        style: TextStyle(
-                          fontFamily: 'Unbounded',
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -.5,
-                          fontSize: 26,
-                          color: ink,
                         ),
+                        Container(
+                          width: 26,
+                          height: 5,
+                          color: ink.withValues(alpha: .6),
+                        ),
+                      ],
+                    )
+                  : Text(
+                      value,
+                      style: TextStyle(
+                        fontFamily: 'Unbounded',
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -.5,
+                        fontSize: 26,
+                        color: ink,
                       ),
-              ],
+                    ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              color: soft,
             ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'Manrope',
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                color: soft,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
     final lit = s.phase == Phase.on || s.phase == Phase.connecting;
     return Row(
       children: [
-        GreyWhenOff(
-          off: s.phase == Phase.off,
-          fade: .5,
-          child: side(
-            Icons.trending_down_rounded,
-            s.on ? '${s.loss.round()}%' : '—',
-            'потери',
-            onTap: s.on ? () => unawaited(showSessionServers(context)) : null,
-          ),
-        ),
-        GestureDetector(
-          onTap: () => unawaited(ref.read(engineProvider.notifier).toggle()),
-          child: PowerBeat(
-            phase: s.phase,
-            radius: 26,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              width: 94,
-              height: 76,
-              decoration: BoxDecoration(
-                color: lit
-                    ? Palette.red
-                    : (Palette.style == 1
-                          ? ink.withValues(alpha: .14)
-                          : const Color(0xFF3A3A40)),
-                borderRadius: BorderRadius.circular(26),
-              ),
-              child: s.phase == Phase.connecting
-                  ? Center(
-                      child: SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.4,
-                          color: Palette.onAccent,
-                        ),
-                      ),
-                    )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.power_settings_new_rounded,
-                          size: 34,
-                          color: lit ? Palette.onAccent : ink,
-                        ),
-                        if (s.on)
-                          Text(
-                            s.network == 'mobile' ? 'LTE' : 'Wi-Fi',
-                            style: TextStyle(
-                              fontFamily: 'Manrope',
-                              fontWeight: FontWeight.w700,
-                              fontSize: 11,
-                              color: lit ? Palette.onAccent : ink,
-                            ),
-                          ),
-                      ],
-                    ),
+        Expanded(
+          child: GreyWhenOff(
+            off: s.phase == Phase.off,
+            fade: .5,
+            child: side(
+              Icons.trending_down_rounded,
+              s.on ? '${s.loss.round()}%' : '—',
+              'потери',
+              glyph: studio ? _DashedRing(color: Palette.red) : null,
+              onTap: s.on ? () => unawaited(showSessionServers(context)) : null,
             ),
           ),
         ),
-        GreyWhenOff(
-          off: s.phase == Phase.off,
-          fade: .5,
-          child: side(
-            Icons.dns_rounded,
-            s.on ? '$answering' : '—',
-            'активных',
-            onTap: s.on && answering > 0
-                ? () => unawaited(showAnsweringServers(context))
-                : null,
+
+        GestureDetector(
+          onTap: () => unawaited(ref.read(engineProvider.notifier).toggle()),
+          child: studio
+              ? _StudioPower(
+                  phase: s.phase,
+                  lit: lit,
+                  label: s.on
+                      ? (s.network == 'mobile' ? 'LTE' : 'Wi-Fi')
+                      : null,
+                )
+              : PowerBeat(
+                  phase: s.phase,
+                  radius: 26,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    width: 94,
+                    height: 76,
+                    decoration: BoxDecoration(
+                      color: lit
+                          ? Palette.red
+                          : (Palette.style == 1
+                                ? ink.withValues(alpha: .14)
+                                : const Color(0xFF3A3A40)),
+                      borderRadius: BorderRadius.circular(26),
+                    ),
+                    child: s.phase == Phase.connecting
+                        ? Center(
+                            child: SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.4,
+                                color: Palette.onAccent,
+                              ),
+                            ),
+                          )
+                        : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.power_settings_new_rounded,
+                                size: 34,
+                                color: lit ? Palette.onAccent : ink,
+                              ),
+                              if (s.on)
+                                Text(
+                                  s.network == 'mobile' ? 'LTE' : 'Wi-Fi',
+                                  style: TextStyle(
+                                    fontFamily: 'Manrope',
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 11,
+                                    color: lit ? Palette.onAccent : ink,
+                                  ),
+                                ),
+                            ],
+                          ),
+                  ),
+                ),
+        ),
+        Expanded(
+          child: GreyWhenOff(
+            off: s.phase == Phase.off,
+            fade: .5,
+            child: side(
+              studio ? Icons.electrical_services_rounded : Icons.dns_rounded,
+              s.on ? '$answering' : '—',
+              'активных',
+              onTap: s.on && answering > 0
+                  ? () => unawaited(showAnsweringServers(context))
+                  : null,
+            ),
           ),
         ),
       ],
     );
   }
+}
+
+/// A ring of dashes: the loss icon of Studio (the packets that did not come back).
+class _DashedRing extends StatelessWidget {
+  const _DashedRing({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    size: const Size.square(30),
+    painter: _DashedRingPainter(color),
+  );
+}
+
+class _DashedRingPainter extends CustomPainter {
+  _DashedRingPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const dashes = 10;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.2
+      ..strokeCap = StrokeCap.round;
+    final rect = Rect.fromCircle(
+      center: size.center(Offset.zero),
+      radius: size.width / 2 - 2.4,
+    );
+    const step = 2 * math.pi / dashes;
+    for (var i = 0; i < dashes; i++) {
+      canvas.drawArc(rect, i * step, step * .55, false, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedRingPainter old) => old.color != color;
+}
+
+/// Studio's power button: a ring of dashes, a relative of the loss icon next to it. Off: a few faint short dashes. Switching
+/// on, the dashes grow into a full accent ring that turns by one step while a soft disc fills it; switching off, it runs back.
+class _StudioPower extends StatelessWidget {
+  const _StudioPower({
+    required this.phase,
+    required this.lit,
+    required this.label,
+  });
+
+  final Phase phase;
+  final bool lit;
+  final String? label;
+
+  static const _size = 84.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = isDark(context);
+    final ink = Palette.ink(dark);
+    final offRing = dark ? const Color(0xFF4A4A50) : const Color(0xFFC9C7BE);
+    final offText = dark ? const Color(0xFF8E8E94) : const Color(0xFF77777C);
+    return PowerBeat(
+      phase: phase,
+      radius: _size / 2,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(end: lit ? 1 : 0),
+        duration: reduceMotionNow
+            ? Duration.zero
+            : const Duration(milliseconds: 560),
+        curve: Curves.easeOutCubic,
+        builder: (context, t, _) {
+          final fg = Color.lerp(offText, ink, t)!;
+          return SizedBox(
+            width: _size,
+            height: _size,
+            child: CustomPaint(
+              painter: _PowerRingPainter(t: t, off: offRing, on: Palette.red),
+              child: Center(
+                child: phase == Phase.connecting
+                    ? SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          color: Palette.red,
+                        ),
+                      )
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Transform.scale(
+                            scale: 1 + .18 * math.sin(math.pi * t),
+                            child: Icon(
+                              Icons.power_settings_new_rounded,
+                              size: 32,
+                              color: fg,
+                            ),
+                          ),
+                          if (label != null)
+                            Text(
+                              label!,
+                              style: TextStyle(
+                                fontFamily: 'Manrope',
+                                fontWeight: FontWeight.w800,
+                                fontSize: 11,
+                                color: fg,
+                              ),
+                            ),
+                        ],
+                      ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _PowerRingPainter extends CustomPainter {
+  _PowerRingPainter({required this.t, required this.off, required this.on});
+
+  final double t;
+  final Color off;
+  final Color on;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const dashes = 12;
+    const step = 2 * math.pi / dashes;
+    final centre = size.center(Offset.zero);
+    if (t > 0) {
+      canvas.drawCircle(
+        centre,
+        size.width / 2 - 13,
+        Paint()..color = on.withValues(alpha: .16 * t),
+      );
+    }
+    final paint = Paint()
+      ..color = Color.lerp(off, on, t)!
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round;
+    final rect = Rect.fromCircle(center: centre, radius: size.width / 2 - 4);
+    final sweep = step * (.2 + .52 * t);
+    final start = -math.pi / 2 + step * t;
+    for (var i = 0; i < dashes; i++) {
+      canvas.drawArc(rect, start + i * step, sweep, false, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_PowerRingPainter old) =>
+      old.t != t || old.off != off || old.on != on;
 }
 
 /// Tells the shell whether a page is open over the tabs.
