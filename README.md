@@ -4,9 +4,16 @@
 
 <h1 align="center">AVET</h1>
 
+<h3 align="center">Ваш VPN не знает, что вы вышли из дома. AVET знает.</h3>
+
 <p align="center">
-  VPN-клиент для Android на ядре <a href="https://github.com/SagerNet/sing-box">sing-box</a>:<br>
-  несколько подписок, умный автовыбор сервера, свой сервер для каждого приложения и сайта.
+  На Wi-Fi одни серверы, на мобильном интернете другие, переключение само.<br>
+  Умный автовыбор, свой сервер для каждого приложения, три стиля оформления на выбор.<br>
+  Бесплатно, с открытым кодом, на ядре <a href="https://github.com/SagerNet/sing-box">sing-box</a>.
+</p>
+
+<p align="center">
+  <a href="../../releases/latest"><b>Скачать APK</b></a> · Android 7.0+ · arm64 · GPL-3.0
 </p>
 
 <p align="center">
