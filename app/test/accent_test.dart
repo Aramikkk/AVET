@@ -62,9 +62,9 @@ void main() {
   });
 
   test('every look keeps its own volume, accent and sheet', () {
-    // no file: Dot Matrix (Glass) begins with glass, burgundy and the sunset, in the grotesk figures
+    // no file: Glass begins with Liquid, burgundy and the sunset, in the grotesk figures
     final fresh = RuleSettings.fromJson({});
-    expect([fresh.style, fresh.depth, fresh.bg, fresh.digits], [0, 2, 3, 0]);
+    expect([fresh.style, fresh.depth, fresh.bg, fresh.digits], [0, 3, 3, 0]);
     expect(Palette.accentNames[fresh.accent], 'Бургунди');
     // Studio begins flat and lime, on the theme's own sheet; Mosaic with relief, icy and the mosaic sheet
     final studio = fresh.switchedTo(2);
@@ -75,7 +75,7 @@ void main() {
     expect(Palette.accentNames[mosaic.accent], 'Ледяной');
     // a change made in a look stays with that look
     final changed = mosaic.copyWith(depth: 2, bg: 0).switchedTo(0);
-    expect([changed.depth, changed.bg], [2, 3]);
+    expect([changed.depth, changed.bg], [3, 3]);
     final again = changed.switchedTo(1);
     expect([again.depth, again.bg], [2, 0]);
     // and it is stored

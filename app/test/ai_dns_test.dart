@@ -25,12 +25,12 @@ void main() {
   );
 
   test(
-    'the ping that counts as slow is the network\'s own: 250 on Wi-Fi, 500 on mobile data',
+    'the ping that counts as slow is the network\'s own: 400 on Wi-Fi, 500 on mobile data',
     () {
       const r = RuleSettings();
-      expect(r.slowMs, 250);
+      expect(r.slowMs, 400);
       expect(r.slowMsLte, 500);
-      expect(EngineState(rules: r).slowAt, 250);
+      expect(EngineState(rules: r).slowAt, 400);
       expect(EngineState(rules: r, network: 'mobile').slowAt, 500);
     },
   );
