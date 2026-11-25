@@ -6,9 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 
-/// The phone's tabs, kept alive like an indexed stack. A sideways drag moves the tab under the finger with the next
-/// (or previous) one coming in beside it; let go past a quarter of the width, or with a flick, and it goes on to
-/// that tab, otherwise it slides back. A tab chosen in the bar comes in at once.
+/// The phone's tabs, kept alive like an indexed stack. They change in depth: the old tab fades and shrinks a little, the
+/// new one comes up in its place. A sideways drag leads the change with the finger; let go past the middle, or with a
+/// flick, and it goes on to that tab, otherwise it goes back. A tab chosen in the bar changes the same way.
 class BranchSwiper extends StatefulWidget {
   const BranchSwiper({
     super.key,
@@ -73,13 +73,30 @@ class _BranchSwiperState extends State<BranchSwiper>
     if (index == _current) return;
     _direction = index > _current ? 1 : -1;
     if (_from == null) {
-      // a tab chosen in the bar comes in at once: nothing slides, nothing fades
+      // a tab chosen in the bar: the same depth as a swipe, from the start
       _slide.stop();
-      _slide.value = 0;
-      _swiping = false;
-      _previous = null;
+      _return.stop();
+      _swiping = true;
+      _previous = _current;
       _current = index;
       _drag = 0;
+      _slide.value = 0;
+      _slide
+          .animateTo(
+            1,
+            duration: reduceMotionNow
+                ? Duration.zero
+                : const Duration(milliseconds: 320),
+            curve: Curves.easeOutCubic,
+          )
+          .whenComplete(() {
+            if (mounted) {
+              setState(() {
+                _previous = null;
+                _swiping = false;
+              });
+            }
+          });
       return;
     }
     _swiping = true;
@@ -179,6 +196,17 @@ class _BranchSwiperState extends State<BranchSwiper>
     _raw = 0;
   }
 
+  /// A page at [x] (0 in place, 1 a whole step away on either side) in depth: no sideways move, the old page goes in
+  /// the first half (it fades and shrinks a little), the new one comes in the second.
+  Widget _moved(double x, Widget child) {
+    // (always the same wrapping, at rest too: a tab taken out of it or put into it was built anew)
+    final a = x.abs().clamp(0.0, 1.0);
+    return Opacity(
+      opacity: (1 - 2 * a).clamp(0.0, 1.0),
+      child: Transform.scale(scale: 1 - .06 * a, child: child),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final neighbour = _previous == null ? _neighbour(_drag) : null;
@@ -189,9 +217,9 @@ class _BranchSwiperState extends State<BranchSwiper>
       final content = RepaintBoundary(child: widget.children[i]);
       return Offstage(
         offstage: !shown,
-        child: FractionalTranslation(
-          translation: Offset(x, 0),
-          child: IgnorePointer(
+        child: _moved(
+          x,
+          IgnorePointer(
             ignoring: !live,
             child: TickerMode(enabled: live, child: content),
           ),
@@ -200,24 +228,29 @@ class _BranchSwiperState extends State<BranchSwiper>
     }
 
     List<Widget> stack(double t) {
-      final back = <Widget>[];
-      final front = <Widget>[];
+      // (index, place, shown, live)
+      final pages = <(int, double, bool, bool)>[];
       for (var i = 0; i < widget.children.length; i++) {
         if (i == _current) {
-          if (_previous == null) {
-            front.add(tab(i, x: _drag, shown: true, live: true));
-          } else {
-            front.add(tab(i, x: _direction * (1 - t), shown: true, live: true));
-          }
+          pages.add((
+            i,
+            _previous == null ? _drag : _direction * (1 - t),
+            true,
+            true,
+          ));
         } else if (i == _previous) {
-          back.add(tab(i, x: -_direction * t, shown: true));
+          pages.add((i, -_direction * t, true, false));
         } else if (i == neighbour) {
-          back.add(tab(i, x: _drag + (_drag < 0 ? 1 : -1), shown: true));
+          pages.add((i, _drag + (_drag < 0 ? 1 : -1), true, false));
         } else {
-          back.add(tab(i));
+          pages.add((i, 0, false, false));
         }
       }
-      return [...back, ...front];
+      // the page in use lies on top (it takes the touches)
+      final order = [...pages.where((p) => !p.$4), ...pages.where((p) => p.$4)];
+      return [
+        for (final p in order) tab(p.$1, x: p.$2, shown: p.$3, live: p.$4),
+      ];
     }
 
     final pages = ClipRect(

@@ -20,6 +20,8 @@ import 'package:avet/ui/nav_icons.dart';
 import 'package:avet/ui/phone_tabs.dart';
 import 'package:avet/ui/toast.dart';
 import 'package:avet/ui/widgets.dart';
+import 'package:avet/update/update.dart';
+import 'package:avet/ui/update_block.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -103,6 +105,10 @@ class _ShellState extends ConsumerState<Shell>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     swapMotion = _swapMotion;
+    // the installed version, read once now: the About page has it when it opens
+    unawaited(Updates.installed().then((_) {}, onError: (_) {}));
+    // once a day the app looks for a newer build by itself (a little after the start: the connection first)
+    Future<void>.delayed(const Duration(seconds: 8), _offerUpdate);
   }
 
   @override
@@ -129,6 +135,28 @@ class _ShellState extends ConsumerState<Shell>
       engine.setForeground(true);
       unawaited(ref.read(engineProvider.notifier).checkConnect());
       unawaited(ref.read(engineProvider.notifier).opened());
+      unawaited(_offerUpdate());
+    }
+  }
+
+  bool _lookingForUpdate = false;
+
+  /// The daily look for a newer build: when there is one, a sheet offers to download it.
+  Future<void> _offerUpdate() async {
+    if (_lookingForUpdate || !mounted) return;
+    final dir = ref.read(engineProvider.notifier).dir;
+    if (dir == null) return;
+    _lookingForUpdate = true;
+    try {
+      final info = await Updates.dailyCheck(dir);
+      if (info == null || !mounted) return;
+      await showSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => UpdateSheet(info: info),
+      );
+    } finally {
+      _lookingForUpdate = false;
     }
   }
 
@@ -226,24 +254,9 @@ class _ShellState extends ConsumerState<Shell>
           final t = Curves.easeOutCubic.transform(
             ModalRoute.of(context)!.secondaryAnimation!.value,
           );
-          if (t == 0) return scaffold!;
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              Transform.translate(
-                // (the settings from the home screen come from above: the screen goes down a little, the rest to the left)
-                offset: pageFromTop
-                    ? Offset(0, MediaQuery.sizeOf(context).height * .07 * t)
-                    : Offset(-MediaQuery.sizeOf(context).width * .26 * t, 0),
-                child: scaffold,
-              ),
-              IgnorePointer(
-                child: ColoredBox(
-                  color: Colors.black.withValues(alpha: .22 * t),
-                ),
-              ),
-            ],
-          );
+          // a page opened over the screen: the screen goes back in depth (the page's sheet covers it as it comes); the
+          // same wrapping at rest too, or the whole screen was built anew when a page opened
+          return Transform.scale(scale: 1 - .06 * t, child: scaffold);
         },
         child: Scaffold(
           backgroundColor: Colors.transparent,

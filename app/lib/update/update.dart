@@ -78,12 +78,38 @@ abstract class Updates {
     return 'https://github.com/$repo/releases/latest/download/${Uri.encodeComponent(name)}';
   }
 
+  /// The installed build as last read (read once at the start: the About page has it when it is built).
+  static InstalledVersion? last;
+
   static Future<InstalledVersion> installed() async {
     final m = await _channel.invokeMapMethod<String, dynamic>('version');
-    return InstalledVersion(
+    return last = InstalledVersion(
       (m?['name'] as String?) ?? '',
       (m?['code'] as num?)?.toInt() ?? 0,
     );
+  }
+
+  /// The look the app takes by itself once a day: the newest build when it is newer than the installed one, otherwise
+  /// null (no look was due yet, nothing new, or no connection: then it looks again at the next opening). The time of the
+  /// last look is kept in [dir] (the app's files).
+  static Future<UpdateInfo?> dailyCheck(String dir) async {
+    final file = File('$dir/update_check.json');
+    var last = 0;
+    try {
+      last = ((jsonDecode(file.readAsStringSync()) as Map)['at'] as num)
+          .toInt();
+    } catch (_) {}
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - last < const Duration(hours: 24).inMilliseconds) return null;
+    try {
+      final installed = await Updates.installed();
+      final info = await latest();
+      file.writeAsStringSync(jsonEncode({'at': now}));
+      if (info == null || !info.isNewerThan(installed.code)) return null;
+      return info;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// The newest build the project has published, or null when there is no release (yet).

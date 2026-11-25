@@ -1,7 +1,7 @@
 name: avet
 description: "A new Flutter project."
 publish_to: 'none'
-version: 2.0.2+20204
+version: 2.0.3+20205
 
 environment:
   sdk: ^3.10.4

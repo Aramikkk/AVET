@@ -677,10 +677,9 @@ Future<T?> showSheet<T>({
   sheetAnimationStyle: sheetMotion,
 );
 
-/// A page opened over the whole screen (settings, the servers), as pages usually open: it slides in from the right over
-/// the screen (from the top with [fromTop]: the settings from the home screen), which moves a little away and dims, with
-/// a soft shadow on its edge; going back is the same the other way. A page that another page opens over moves away and
-/// dims in the same way. The panel stays where it is, under the pages. Every page has the same time and curve.
+/// A page opened over the whole screen (settings, the servers). It comes in depth, as the tabs change: what was under it
+/// fades away and shrinks a little, then the page comes up in its place; going back is the same the other way. The panel
+/// stays where it is, under the pages. Every page has the same time and curve.
 Future<void> openPage(
   BuildContext context,
   Widget page, {
@@ -692,13 +691,17 @@ Future<void> openPage(
       .push(
         PageRouteBuilder<void>(
           opaque: true,
+          // (a little longer than the tabs' change: a page is built anew and needs the time to come up whole)
           transitionDuration: reduceMotionNow
               ? const Duration(milliseconds: 160)
-              : kPageOpenMotion,
+              : const Duration(milliseconds: 450),
           reverseTransitionDuration: reduceMotionNow
               ? const Duration(milliseconds: 140)
-              : kPageCloseMotion,
-          pageBuilder: (context, animation, _) => FlatScope(
+              : const Duration(milliseconds: 360),
+          // the page comes in depth, as the tabs change: its sheet first covers what was under it (the old page fades out
+          // into it), then its content comes up from a little smaller; a page opened over this one sends it back the same
+          // way. Going back runs it the other way.
+          pageBuilder: (context, animation, secondaryAnimation) => FlatScope(
             child: Scaffold(
               backgroundColor: Colors.transparent,
               body: DotBackdrop(
@@ -706,93 +709,43 @@ Future<void> openPage(
                   padding: EdgeInsets.only(
                     bottom: MediaQuery.viewPaddingOf(context).bottom,
                   ),
-                  child: page,
+                  child: AnimatedBuilder(
+                    animation: Listenable.merge([
+                      animation,
+                      secondaryAnimation,
+                    ]),
+                    builder: (context, page) {
+                      final v = Curves.easeInOut.transform(animation.value);
+                      final s = Curves.easeInOut.transform(
+                        secondaryAnimation.value,
+                      );
+                      final shown = (2 * v - 1).clamp(0.0, 1.0);
+                      final scale = (1 - .06 * (1 - shown)) * (1 - .06 * s);
+                      // (always the same wrapping: a page let out of it at the end of the motion was built anew,
+                      // and it jumped)
+                      return Opacity(
+                        opacity: shown,
+                        child: Transform.scale(scale: scale, child: page),
+                      );
+                    },
+                    child: RepaintBoundary(child: page),
+                  ),
                 ),
               ),
             ),
           ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            // (the sheets behind stand still while a page slides)
+            // (the sheets behind stand still while a page changes)
             if (animation.isAnimating || secondaryAnimation.isAnimating) {
               SlowClock.hold();
             }
-            final curved = CurvedAnimation(
-              parent: animation,
-              curve: kOpenCurve,
-              reverseCurve: kCloseCurve,
-            );
-            final slid = SlideTransition(
-              position: Tween<Offset>(
-                begin: fromTop ? const Offset(0, -1) : const Offset(1, 0),
-                end: Offset.zero,
-              ).animate(curved),
-              // the page is a picture that slides (a layer of its own); its shadow is a strip of gradient along the edge that
-              // leads (a blurred shadow under a whole page that moves is drawn again at every frame: it was the dear part)
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  RepaintBoundary(child: child),
-                  Positioned(
-                    left: fromTop ? 0 : -18,
-                    right: 0,
-                    top: 0,
-                    bottom: fromTop ? -18 : 0,
-                    child: IgnorePointer(
-                      child: Align(
-                        alignment: fromTop
-                            ? Alignment.bottomCenter
-                            : Alignment.centerLeft,
-                        child: SizedBox(
-                          width: fromTop ? double.infinity : 18,
-                          height: fromTop ? 18 : double.infinity,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: fromTop
-                                    ? Alignment.topCenter
-                                    : Alignment.centerRight,
-                                end: fromTop
-                                    ? Alignment.bottomCenter
-                                    : Alignment.centerLeft,
-                                colors: const [
-                                  Color(0x3D000000),
-                                  Color(0x00000000),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+            return FadeTransition(
+              opacity: animation.drive(
+                CurveTween(
+                  curve: const Interval(0, .5, curve: Curves.easeInOut),
+                ),
               ),
-            );
-            // another page opening over this one: this one moves a little to the left and dims
-            return AnimatedBuilder(
-              animation: secondaryAnimation,
-              builder: (context, slid) {
-                final t = kOpenCurve.transform(secondaryAnimation.value);
-                if (t == 0) return slid!;
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Transform.translate(
-                      offset: Offset(
-                        -MediaQuery.sizeOf(context).width * .26 * t,
-                        0,
-                      ),
-                      child: slid,
-                    ),
-                    IgnorePointer(
-                      child: ColoredBox(
-                        color: Colors.black.withValues(alpha: .22 * t),
-                      ),
-                    ),
-                  ],
-                );
-              },
-              child: slid,
+              child: child,
             );
           },
         ),

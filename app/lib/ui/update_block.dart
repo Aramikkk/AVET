@@ -20,7 +20,10 @@ enum _Step {
 /// The program's update on the About page: looks the newest release up on GitHub, downloads its APK with the progress shown
 /// and hands it to the system installer.
 class UpdateBlock extends StatefulWidget {
-  const UpdateBlock({super.key});
+  const UpdateBlock({super.key, this.info});
+
+  /// a newer build already found (the daily look): the block begins with it, ready to download
+  final UpdateInfo? info;
 
   @override
   State<UpdateBlock> createState() => _UpdateBlockState();
@@ -28,7 +31,7 @@ class UpdateBlock extends StatefulWidget {
 
 class _UpdateBlockState extends State<UpdateBlock> {
   _Step _step = _Step.idle;
-  InstalledVersion? _installed;
+  InstalledVersion? _installed = Updates.last;
   UpdateInfo? _info;
   File? _file;
   double _progress = 0;
@@ -37,6 +40,10 @@ class _UpdateBlockState extends State<UpdateBlock> {
   @override
   void initState() {
     super.initState();
+    if (widget.info != null) {
+      _info = widget.info;
+      _step = _Step.available;
+    }
     unawaited(_loadInstalled());
   }
 
@@ -142,7 +149,8 @@ class _UpdateBlockState extends State<UpdateBlock> {
     final busy = _step == _Step.checking || _step == _Step.downloading;
 
     // the line under the title and the button at the right
-    var line = i == null ? '' : 'Установлена версия ${i.name} (${i.code})';
+    // (a line is there from the start, even before the version is read: the page does not move when it comes)
+    var line = i == null ? ' ' : 'Установлена версия ${i.name} (${i.code})';
     String? button;
     VoidCallback? action;
     switch (_step) {
@@ -239,4 +247,37 @@ class _UpdateBlockState extends State<UpdateBlock> {
 
   static String _mb(int bytes) =>
       '${(bytes / 1048576).toStringAsFixed(1).replaceAll('.', ',')} МБ';
+}
+
+/// The offer the app makes by itself when the daily look found a newer build: what is new and the download, in a sheet.
+class UpdateSheet extends StatelessWidget {
+  const UpdateSheet({super.key, required this.info});
+
+  final UpdateInfo info;
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(22, 18, 22, 10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Вышла новая версия AVET',
+            style: mono(context, 16, weight: FontWeight.w800),
+          ),
+          const SizedBox(height: 14),
+          UpdateBlock(info: info),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Позже'),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
