@@ -85,7 +85,9 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                 Expanded(
                   child: _Tile(
                     title: 'Пинг сейчас',
-                    value: s.on && s.ping != null ? '${s.ping} мс' : '—',
+                    value: s.on && s.offline
+                        ? 'нет сети'
+                        : (s.on && s.ping != null ? '${s.ping} мс' : '—'),
                     small: answers == null ? ' ' : 'средний $answers мс',
                   ),
                 ),

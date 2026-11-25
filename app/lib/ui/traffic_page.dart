@@ -6,7 +6,6 @@ import 'package:avet/data/treemap.dart';
 import 'package:avet/state/engine.dart';
 import 'package:avet/ui/shown.dart';
 import 'package:avet/ui/app_icon.dart';
-import 'package:avet/ui/route_badge.dart';
 import 'package:avet/ui/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,8 +17,8 @@ class TrafficPage extends ConsumerWidget {
   /// the most tiles: the rest in one tile of their own
   static const _most = 11;
 
-  /// the least an app must have moved to get a tile: 1 MB
-  static const _least = 1024 * 1024;
+  /// the least an app must have moved to get a tile: 10 MB
+  static const _least = 10 * 1024 * 1024;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -81,7 +80,7 @@ class TrafficPage extends ConsumerWidget {
                                   const SizedBox(height: 10),
                                   Text(
                                     s.on
-                                        ? 'Приложений с трафиком от 1 МБ пока нет'
+                                        ? 'Приложений с трафиком от 10 МБ пока нет'
                                         : 'Включите VPN',
                                     textAlign: TextAlign.center,
                                     style: mono(context, 11, colour: soft),
@@ -221,230 +220,68 @@ class _TileView extends StatelessWidget {
       ),
       child: LayoutBuilder(
         builder: (context, box) {
-          final small = box.maxHeight < 110 || box.maxWidth < 120;
+          // only the icon, the name and the amount; a block too small for the name: the icon alone, in its middle
           final name = g == null ? 'ещё ${tile.more}' : AppNames.label(g.key);
           final side = math.min(box.maxWidth, box.maxHeight);
-          // the width of a text in the face it is set in (to know whether it fits before it is shown: a name cut to "Wha…" says
-          // nothing, the icon alone says more)
+          final big = box.maxHeight > 220 && box.maxWidth > 150;
+          final iconSize = (side * (big ? .3 : .34)).clamp(24.0, 60.0);
+          final nameStyle = mono(
+            context,
+            big ? 14 : 12,
+            weight: FontWeight.w700,
+          );
+          final amountSize = big ? 40.0 : (box.maxHeight > 130 ? 28.0 : 20.0);
+          final amountStyle = TextStyle(
+            fontFamily: 'Unbounded',
+            fontWeight: FontWeight.w800,
+            fontSize: amountSize,
+            height: 1.15,
+            color: Palette.ink(dark),
+          );
+          final unitStyle = mono(
+            context,
+            big ? 14 : 11,
+            colour: Palette.soft(dark),
+          );
           double widthOf(String text, TextStyle style) => (TextPainter(
             text: TextSpan(text: text, style: style),
             textDirection: TextDirection.ltr,
             maxLines: 1,
           )..layout()).width;
-          final column =
-              g != null &&
-              box.maxWidth < 110 &&
-              box.maxHeight > box.maxWidth * 2.2;
-          final amountSize = column
-              ? 26.0
-              : small
-              ? 16.0
-              : (box.maxHeight > 300 ? 44.0 : 30.0);
-          final nameWidth = widthOf(
-            name,
-            mono(context, column || !small ? 13 : 11, weight: FontWeight.w700),
-          );
-          final amountWidth =
-              widthOf(
-                parts.first,
-                TextStyle(
-                  fontFamily: 'Unbounded',
-                  fontWeight: FontWeight.w800,
-                  fontSize: amountSize,
-                ),
-              ) +
-              widthOf(' ${parts.last}', mono(context, small ? 11 : 14));
-          final iconBeside = small && !column
-              ? (box.maxHeight * .34).clamp(14.0, 26.0) + 6
-              : 0.0;
-          final room = column ? box.maxHeight - 60 : box.maxWidth;
+          final needHeight = iconSize + 8 + 18 + amountSize * 1.15;
           final fits =
-              nameWidth <= (column ? room : room - iconBeside) &&
-              (box.maxHeight < 56 || amountWidth <= room);
-          // a block too small for its words (or for anything but the icon): the icon alone, as large as the block lets it be
-          if (g != null && box.maxHeight < 44) {
-            return Align(
-              alignment: Alignment.topLeft,
-              child: AppIcon(g.key, size: (side * .8).clamp(12.0, 34.0)),
-            );
-          }
-          // too narrow for the name: the icon says it. What the block can still show stays: the figure and the countries
-          // (scaled down together, never cut), all from the top left as in the other blocks
-          if (g != null && !fits) {
-            final showAmount = box.maxHeight >= 64;
-            return Align(
-              alignment: Alignment.topLeft,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.topLeft,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    AppIcon(g.key, size: (side * .34).clamp(24.0, 40.0)),
-                    if (showAmount) ...[
-                      const SizedBox(height: 6),
-                      Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(
-                              text: parts.first,
-                              style: const TextStyle(
-                                fontFamily: 'Unbounded',
-                                fontWeight: FontWeight.w800,
-                                fontSize: 16,
-                                height: 1.2,
-                              ),
-                            ),
-                            TextSpan(
-                              text: ' ${parts.last}',
-                              style: mono(
-                                context,
-                                10,
-                                colour: Palette.soft(dark),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (box.maxHeight >= 90) ...[
-                        const SizedBox(height: 4),
-                        RouteLine(group: g, size: 10),
-                      ],
-                    ],
-                  ],
-                ),
-              ),
-            );
-          }
-          // a tall narrow block (a column): its words would be cut to nothing, so they lie along it, reading downwards
-          if (column) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AppIcon(g.key, size: (box.maxWidth * .5).clamp(24.0, 34.0)),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: RotatedBox(
-                    quarterTurns: 1,
-                    child: Align(
-                      alignment: Alignment.topLeft,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              name,
-                              maxLines: 1,
-                              style: mono(context, 13, weight: FontWeight.w700),
-                            ),
-                            const SizedBox(height: 4),
-                            Text.rich(
-                              TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: parts.first,
-                                    style: const TextStyle(
-                                      fontFamily: 'Unbounded',
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 26,
-                                      height: 1.2,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: ' ${parts.last}',
-                                    style: mono(
-                                      context,
-                                      13,
-                                      colour: Palette.soft(dark),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            RouteLine(group: g, size: 10),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              widthOf(name, nameStyle) <= box.maxWidth &&
+              widthOf(parts.first, amountStyle) +
+                      widthOf(' ${parts.last}', unitStyle) <=
+                  box.maxWidth &&
+              needHeight <= box.maxHeight;
+          if (!fits) {
+            return Center(
+              child: g == null
+                  ? Text(
+                      '+${tile.more}',
+                      style: mono(context, 13, weight: FontWeight.w800),
+                    )
+                  : AppIcon(g.key, size: (side * .5).clamp(16.0, 48.0)),
             );
           }
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // the icon is in every block, its size following the block's: above the name in a big one, before the name in a
-              // small one
-              if (g != null && !small) ...[
-                AppIcon(g.key, size: (side * .34).clamp(30.0, 60.0)),
-                const SizedBox(height: 10),
+              if (g != null) ...[
+                AppIcon(g.key, size: iconSize),
+                const SizedBox(height: 8),
               ],
-              if (g != null && small)
-                Row(
+              Text(name, maxLines: 1, style: nameStyle),
+              Text.rich(
+                TextSpan(
                   children: [
-                    AppIcon(
-                      g.key,
-                      size: (box.maxHeight * .34).clamp(14.0, 26.0),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: mono(context, 11, weight: FontWeight.w700),
-                      ),
-                    ),
+                    TextSpan(text: parts.first, style: amountStyle),
+                    TextSpan(text: ' ${parts.last}', style: unitStyle),
                   ],
-                )
-              else
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: mono(
-                    context,
-                    small ? 10 : 13,
-                    weight: FontWeight.w700,
-                  ),
                 ),
-              if (box.maxHeight >= 56)
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: parts.first,
-                        style: TextStyle(
-                          fontFamily: 'Unbounded',
-                          fontWeight: FontWeight.w800,
-                          fontSize: small
-                              ? 16
-                              : (box.maxHeight > 300 ? 44 : 30),
-                          height: 1.2,
-                        ),
-                      ),
-                      TextSpan(
-                        text: ' ${parts.last}',
-                        style: mono(
-                          context,
-                          small ? 10 : 14,
-                          colour: Palette.soft(dark),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              if (g != null && box.maxHeight >= 90) ...[
-                // (room between the figure and the line under it)
-                SizedBox(height: box.maxHeight > 200 ? 10 : 5),
-                RouteLine(group: g, size: 10),
-              ],
+                maxLines: 1,
+              ),
             ],
           );
         },

@@ -73,20 +73,32 @@ class HomePage extends ConsumerWidget {
                   ],
                 ),
               ),
-              FitSlot(group: 1, grow: 3, child: _PingBlock(state: s)),
+              FitSlot(
+                group: 1,
+                grow: 3,
+                child: SheenLive(child: _PingBlock(state: s)),
+              ),
               FitSlot(
                 group: 1,
                 rank: 1,
                 grow: 3,
-                child: _PingBlock(state: s, slim: true),
+                child: SheenLive(child: _PingBlock(state: s, slim: true)),
               ),
               FitSlot(
                 group: 2,
                 child: s.subs.isEmpty
                     ? const AddSubscriptionBlock()
-                    : _ServerRow(state: s),
+                    : SheenLive(
+                        kind: SheenKind.server,
+                        child: _ServerRow(state: s),
+                      ),
               ),
-              if (!light) const FitSlot(group: 3, grow: 2, child: SitesBlock()),
+              if (!light)
+                const FitSlot(
+                  group: 3,
+                  grow: 2,
+                  child: SheenLive(kind: SheenKind.multi, child: SitesBlock()),
+                ),
             ],
           ),
         ),
@@ -648,7 +660,12 @@ class _PingBlockState extends State<_PingBlock> {
               ),
               const SizedBox(height: 4),
               Center(
-                child: ping == null
+                child: s.on && s.offline
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        child: const NoNetwork(size: 22),
+                      )
+                    : ping == null
                     // (an unseen figure gives the dash the height of a real one, so nothing moves when the VPN goes on and off)
                     ? Stack(
                         alignment: Alignment.center,

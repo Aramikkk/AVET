@@ -62,10 +62,11 @@ abstract final class Mosaic {
         isDark(context),
         radius,
         dense: Palette.denseAt(context),
+        live: SheenLive.of(context),
       );
-      return CustomPaint(
-        foregroundPainter: glass.$2,
-        child: Container(padding: padding, decoration: glass.$1, child: child),
+      return withRim(
+        glass.$2,
+        Container(padding: padding, decoration: glass.$1, child: child),
       );
     }
     return Container(
@@ -175,7 +176,15 @@ class _PingHeroState extends State<_PingHero> {
                             ? Duration.zero
                             : const Duration(milliseconds: 600),
                         curve: Curves.easeOutCubic,
-                        builder: (context, v, _) => ping == null
+                        builder: (context, v, _) => s.on && s.offline
+                            ? Padding(
+                                padding: const EdgeInsets.only(bottom: 30),
+                                child: NoNetwork(
+                                  size: 22,
+                                  colour: ink.withValues(alpha: .75),
+                                ),
+                              )
+                            : ping == null
                             ? Padding(
                                 padding: const EdgeInsets.only(bottom: 30),
                                 child: Container(
@@ -329,7 +338,9 @@ class _Tiles extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, box) {
         final fill = box.hasTightHeight;
-        Widget hero() => _PingHero(state: s, fill: fill);
+        Widget hero() => SheenLive(
+          child: _PingHero(state: s, fill: fill),
+        );
         Widget chip(IconData icon, {bool solid = false}) => Container(
           width: 28,
           height: 28,

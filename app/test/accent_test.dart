@@ -95,26 +95,26 @@ void main() {
   });
 
   test('every look keeps its own volume, accent and sheet', () {
-    // no file: Glass begins with Liquid, burgundy and the sunset, in the grotesk figures
+    // no file: Glass begins with Liquid, burgundy and the Fallen sheet, in the grotesk figures
     final fresh = RuleSettings.fromJson({});
-    expect([fresh.style, fresh.depth, fresh.bg, fresh.digits], [0, 3, 3, 0]);
+    expect([fresh.style, fresh.depth, fresh.bg, fresh.digits], [0, 3, 6, 0]);
     expect(Palette.accentNames[fresh.accent], 'Бургунди');
-    // every look begins with Liquid: Studio lime, on the theme's own sheet; Mosaic icy, on the mosaic sheet
+    // every look begins with Liquid and the Fallen sheet: Studio lime, Mosaic icy
     final studio = fresh.switchedTo(2);
-    expect([studio.depth, studio.bg], [3, 2]);
+    expect([studio.depth, studio.bg], [3, 6]);
     expect(Palette.accentNames[studio.accent], 'Лайм');
     final mosaic = studio.switchedTo(1);
-    expect([mosaic.depth, mosaic.bg], [3, 5]);
+    expect([mosaic.depth, mosaic.bg], [3, 6]);
     expect(Palette.accentNames[mosaic.accent], 'Ледяной');
     // a change made in a look stays with that look
     final changed = mosaic.copyWith(depth: 1, bg: 0).switchedTo(0);
-    expect([changed.depth, changed.bg], [3, 3]);
+    expect([changed.depth, changed.bg], [3, 6]);
     final again = changed.switchedTo(1);
     expect([again.depth, again.bg], [1, 0]);
     // and it is stored
     final back = RuleSettings.fromJson(again.toJson());
     expect(back.switchedTo(2).depth, 3);
-    expect(back.switchedTo(0).bg, 3);
+    expect(back.switchedTo(0).bg, 6);
   });
   test('the launcher icon setting is kept and defaults to off', () {
     expect(const RuleSettings().tintIcon, isFalse);

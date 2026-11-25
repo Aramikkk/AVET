@@ -68,6 +68,17 @@ class MainActivity : FlutterActivity() {
                     d.mkdirs()
                     result.success(d.path)
                 }
+                // whether the phone has any network but the VPN with the internet on it
+                "online" -> {
+                    val cm = getSystemService(android.net.ConnectivityManager::class.java)
+                    @Suppress("DEPRECATION")
+                    val any = cm.allNetworks.any { n ->
+                        val c = cm.getNetworkCapabilities(n)
+                        c != null && !c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN) &&
+                            c.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    }
+                    result.success(any)
+                }
                 "version" -> {
                     val info = packageManager.getPackageInfo(packageName, 0)
                     val code = if (android.os.Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong()

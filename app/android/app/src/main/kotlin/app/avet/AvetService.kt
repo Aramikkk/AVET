@@ -582,7 +582,10 @@ class AvetService : VpnService(), PlatformInterface, CommandServerHandler {
             override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) = report(network, listener)
             override fun onLinkPropertiesChanged(network: Network, link: android.net.LinkProperties) =
                 report(network, listener)
-            override fun onLost(network: Network) = listener.updateDefaultInterface("", -1, false, false)
+            override fun onLost(network: Network) {
+                if (reported == network) reported = null
+                listener.updateDefaultInterface("", -1, false, false)
+            }
         }
         networkCallback?.let { old -> try { connectivity.unregisterNetworkCallback(old) } catch (_: Exception) {} }
         networkCallback = callback
@@ -601,12 +604,20 @@ class AvetService : VpnService(), PlatformInterface, CommandServerHandler {
     }
 
     /** The network the device's traffic goes out by: the active one when it is not a VPN, else Wi-Fi, else any. */
+    /**
+     * The network the system's own choice of the default (the best-matching callback) last named. It is the truth about
+     * the way out: a dying Wi-Fi stays among the networks for minutes after the system moved to mobile data, and asking
+     * the list then (Wi-Fi first) kept the servers on Wi-Fi with no connection at all (13 minutes on 25.11).
+     */
+    @Volatile private var reported: Network? = null
+
     private fun currentUnderlying(): Network? {
         fun ok(n: Network): Boolean {
             val caps = connectivity.getNetworkCapabilities(n) ?: return false
             return !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
                 caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
         }
+        reported?.let { if (ok(it)) return it }
         connectivity.activeNetwork?.let { if (ok(it)) return it }
         @Suppress("DEPRECATION")
         val all = connectivity.allNetworks.filter(::ok)
@@ -621,6 +632,7 @@ class AvetService : VpnService(), PlatformInterface, CommandServerHandler {
         val caps = connectivity.getNetworkCapabilities(network)
         val metered = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED) != true
         listener.updateDefaultInterface(name, index, metered, false)
+        reported = network
         note("I", "network now: $name (${kindOf(network)})")
         onNetwork(kindOf(network))
     }
@@ -629,6 +641,7 @@ class AvetService : VpnService(), PlatformInterface, CommandServerHandler {
         note("I", "network monitor closed")
         networkCallback?.let { try { connectivity.unregisterNetworkCallback(it) } catch (_: Exception) {} }
         networkCallback = null
+        reported = null
     }
 
     override fun getInterfaces(): NetworkInterfaceIterator {

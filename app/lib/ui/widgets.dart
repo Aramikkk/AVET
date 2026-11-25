@@ -166,6 +166,20 @@ abstract final class Palette {
     double radius, {
     bool glow = false,
     bool dense = false,
+    SheenKind? live,
+  }) {
+    final (deco, rim) = _volume(dark, radius, glow: glow, dense: dense);
+    // the event rims (red, green, blue) are on every sheet: only the blocks that have them (the home screen's ping,
+    // server and multi-servers) get the painter
+    if (live == null) return (deco, rim);
+    return (deco, Sheen(rim, radius, red, dark, kind: live));
+  }
+
+  static (Decoration, CustomPainter) _volume(
+    bool dark,
+    double radius, {
+    bool glow = false,
+    bool dense = false,
   }) {
     final r = BorderRadius.circular(radius);
     // the glow is the accent toned down: a bright, saturated one (red, raspberry) is dulled and dimmed so the light
@@ -436,6 +450,8 @@ class DotBackdrop extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = isDark(context);
     // 2 is the theme's own sheet (below); the others are the Background setting's (ui/backdrops.dart)
+    // (6, the sheen: the theme's own sheet stands still, the blocks shimmer, see [Sheen])
+    Sheen.run(Palette.running && !reduceMotionNow);
     if (Palette.bg != 2) {
       return Stack(
         fit: StackFit.expand,
@@ -605,6 +621,7 @@ class Paper extends StatelessWidget {
                 : math.max(radius, 18.0),
             glow: glow,
             dense: Palette.denseAt(context),
+            live: SheenLive.of(context),
           )
         : null;
     final box = Container(
@@ -649,9 +666,7 @@ class Paper extends StatelessWidget {
             c.hasTightHeight ? Center(child: child) : child,
       ),
     );
-    final shown = volume == null
-        ? box
-        : CustomPaint(foregroundPainter: volume.$2, child: box);
+    final shown = volume == null ? box : withRim(volume.$2, box);
     return onTap == null
         ? shown
         : GestureDetector(
@@ -722,6 +737,7 @@ Future<void> openPage(
   bool fromTop = false,
 }) {
   Palette.settingsOpen++;
+  Sheen._syncHome();
   if (fromTop) pageFromTop = true;
   return Navigator.of(context, rootNavigator: true)
       .push(
@@ -794,6 +810,7 @@ Future<void> openPage(
       )
       .whenComplete(() {
         Palette.settingsOpen--;
+        Sheen._syncHome();
         if (fromTop) pageFromTop = false;
       });
 }
@@ -1269,4 +1286,211 @@ class VolumeRim extends CustomPainter {
       old.shadows.length != shadows.length ||
       (shadows.isNotEmpty &&
           (old.shadows.first.colour != shadows.first.colour));
+}
+
+/// The sheen of the "Перелив" background: a soft band of the accent goes slowly across every block (each a little later
+/// than the one before, by its size), over its rim. One slow clock for all of them (20 beats a second).
+class Sheen extends CustomPainter {
+  Sheen(this.rim, this.radius, this.accent, this.dark, {this.kind})
+    : super(repaint: kind != null ? clock : null);
+
+  /// the block this is: the ping's and the multi-servers' turn their light and go red when things are slow; the
+  /// server's stands still and flashes green when the country changes; null: a block like the others
+  final SheenKind? kind;
+
+  bool get live => kind != null;
+
+  final CustomPainter rim;
+  final double radius;
+  final Color accent;
+  final bool dark;
+
+  /// one turn of the light flowing round the edge of a block
+  static final clock = SlowClock(const Duration(seconds: 6));
+
+  static void run(bool on) => on ? clock.start() : clock.stop();
+
+  /// whether the home screen is in front (the moving sheets move only then): the home tab is shown and no page is open
+  /// over it (the settings open on the root navigator: they are counted apart)
+  static final home = ValueNotifier<bool>(true);
+  static bool _homeTab = true;
+
+  static void homeTab(bool on) {
+    _homeTab = on;
+    _syncHome();
+  }
+
+  static void _syncHome() {
+    final v = _homeTab && Palette.settingsOpen == 0;
+    if (home.value != v) home.value = v;
+  }
+
+  /// the ping is slow (the ping's block goes red), more than half the multi-servers are (theirs does)
+  static bool alarm = false;
+  static bool multiAlarm = false;
+
+  /// the country of the server in use changed then: the server's block flashes green for a moment
+  static DateTime greenAt = DateTime(2000);
+
+  /// the phone moved to another network then: the ping's block flashes blue (Wi-Fi) or light blue (mobile data)
+  static DateTime netAt = DateTime(2000);
+  static bool netMobile = false;
+
+  static const _flash = Duration(milliseconds: 3500);
+
+  /// how far each block's light is lit (it follows what is wanted a little at every beat: it comes and goes smoothly),
+  /// and the colour it was last lit in (kept while it fades out)
+  static final _tint = <SheenKind, double>{};
+  static final _colour = <SheenKind, Color>{};
+
+  /// The colour of what is happening now, for the sheet behind the blocks ("Перелив"): a slow ping (red) first, then a
+  /// new network, a new country, slow multi-servers; null: nothing.
+  static Color? eventColour() =>
+      _wanted(SheenKind.ping) ??
+      _wanted(SheenKind.server) ??
+      _wanted(SheenKind.multi);
+
+  /// What the block of [kind] should show now: a colour, or null (nothing: no rim at all).
+  static Color? _wanted(SheenKind kind) {
+    final now = DateTime.now();
+    switch (kind) {
+      case SheenKind.ping:
+        if (alarm) return Palette.alert;
+        if (now.difference(netAt) < _flash) {
+          return netMobile ? const Color(0xFF8FD8FF) : const Color(0xFF2F7BFF);
+        }
+        return null;
+      case SheenKind.multi:
+        return multiAlarm ? Palette.alert : null;
+      case SheenKind.server:
+        return now.difference(greenAt) < _flash
+            ? const Color(0xFF34D27B)
+            : null;
+    }
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    rim.paint(canvas, size);
+    if (size.isEmpty || !live) return;
+    // no rim of its own at rest: the light comes only while something happens (a slow ping, a new country, another
+    // network), flows round the edge and goes again
+    final want = _wanted(kind!);
+    if (want != null) _colour[kind!] = want;
+    final lit =
+        (_tint[kind] ?? 0) +
+        ((want != null ? 1.0 : 0.0) - (_tint[kind] ?? 0)) * .08;
+    _tint[kind!] = lit;
+    final colour = _colour[kind];
+    if (lit <= .01 || colour == null) return;
+    final rect = Offset.zero & size;
+    final rr = RRect.fromRectAndRadius(
+      rect.deflate(.5),
+      Radius.circular(radius),
+    );
+    const lo = .12, hi = .85;
+    canvas.drawRRect(
+      rr,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.1
+        ..shader = SweepGradient(
+          transform: GradientRotation(2 * math.pi * clock.value),
+          colors: [
+            for (var i = 0; i <= 24; i++)
+              colour.withValues(
+                alpha:
+                    lit *
+                    (lo +
+                        (hi - lo) *
+                            math.pow(
+                              (1 + math.cos(4 * math.pi * i / 24)) / 2,
+                              2.2,
+                            )),
+              ),
+          ],
+        ).createShader(rect),
+    );
+  }
+
+  @override
+  bool shouldRepaint(Sheen old) =>
+      old.accent != accent ||
+      old.dark != dark ||
+      old.kind != kind ||
+      rim.shouldRepaint(old.rim);
+}
+
+enum SheenKind { ping, multi, server }
+
+/// The blocks under it are of [kind] (see [Sheen]).
+class SheenLive extends InheritedWidget {
+  const SheenLive({
+    super.key,
+    this.kind = SheenKind.ping,
+    required super.child,
+  });
+
+  final SheenKind kind;
+
+  static SheenKind? of(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<SheenLive>()?.kind;
+
+  @override
+  bool updateShouldNotify(SheenLive old) => old.kind != kind;
+}
+
+/// What the ping says when the phone has no network at all: quiet, in grey, with the sign of a lost network.
+class NoNetwork extends StatelessWidget {
+  const NoNetwork({super.key, this.size = 18, this.colour});
+
+  final double size;
+
+  /// the colour (the soft grey of the page if none)
+  final Color? colour;
+
+  @override
+  Widget build(BuildContext context) {
+    final soft = colour ?? Palette.soft(isDark(context));
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.wifi_off_rounded, size: size * 1.15, color: soft),
+        SizedBox(width: size * .45),
+        Text(
+          'нет сети',
+          style: TextStyle(
+            fontFamily: 'Manrope',
+            fontWeight: FontWeight.w600,
+            fontSize: size,
+            letterSpacing: size * .02,
+            color: soft,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A block with its rim painted over it. A rim that moves (the "Перелив" light on the ping's and the multi-servers'
+/// blocks) is a layer of its own over the block's own layer: a beat of the light redraws the thin rim alone, not the
+/// block and the page under it (that doubled the work of the screen).
+Widget withRim(CustomPainter rim, Widget box) {
+  if (rim is Sheen && rim.live) {
+    return Stack(
+      clipBehavior: Clip.none,
+      // (the block keeps the size it is given: with a loose fit a block that grows to fill its slot stayed at its
+      // content's height, and the rim drawn round the whole slot showed a second edge under it)
+      fit: StackFit.passthrough,
+      children: [
+        RepaintBoundary(child: box),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: RepaintBoundary(child: CustomPaint(painter: rim)),
+          ),
+        ),
+      ],
+    );
+  }
+  return CustomPaint(foregroundPainter: rim, child: box);
 }

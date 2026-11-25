@@ -67,7 +67,12 @@ abstract final class Studio {
   }) {
     final dark = isDark(context);
     final volume = Palette.depthAt(context) > 0
-        ? Palette.volume(dark, radius, dense: Palette.denseAt(context))
+        ? Palette.volume(
+            dark,
+            radius,
+            dense: Palette.denseAt(context),
+            live: SheenLive.of(context),
+          )
         : null;
     final box = Container(
       padding: padding,
@@ -86,9 +91,7 @@ abstract final class Studio {
             : child,
       ),
     );
-    return volume == null
-        ? box
-        : CustomPaint(foregroundPainter: volume.$2, child: box);
+    return volume == null ? box : withRim(volume.$2, box);
   }
 }
 
@@ -133,7 +136,11 @@ class StudioHome extends ConsumerWidget {
               ),
             ),
             // (a tall page gives the room the connections block had to the ping and the traffic)
-            FitSlot(group: 1, grow: 3, child: _Ping(state: s)),
+            FitSlot(
+              group: 1,
+              grow: 3,
+              child: SheenLive(child: _Ping(state: s)),
+            ),
             FitSlot(group: 2, grow: 2, child: _Traffic(state: s)),
             FitSlot(
               group: 3,
@@ -232,7 +239,12 @@ class _Ping extends StatelessWidget {
                           ? Duration.zero
                           : const Duration(milliseconds: 600),
                       curve: Curves.easeOutCubic,
-                      builder: (context, v, _) => ping == null
+                      builder: (context, v, _) => s.on && s.offline
+                          ? Align(
+                              alignment: Alignment.centerLeft,
+                              child: const NoNetwork(size: 22),
+                            )
+                          : ping == null
                           ? Align(
                               // loose: a Container inside the tight box would be stretched to a square
                               alignment: Alignment.centerLeft,

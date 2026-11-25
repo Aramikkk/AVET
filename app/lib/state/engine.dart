@@ -99,7 +99,7 @@ class RuleSettings {
     this.sleepCount = 15,
     this.sleepCountLte = 10,
     this.depth = 3,
-    this.bg = 3,
+    this.bg = 6,
     this.looks = const {
       1: [1, 15, 5],
       2: [0, 11, 2],
@@ -288,9 +288,9 @@ class RuleSettings {
   /// Where each look begins: volume (0 flat, 1 relief, 3 Liquid; 2 was glass and is gone), accent (a place in Palette.accents:
   /// burgundy, icy, lime) and the sheet (Backdrops: 3 sunset, 5 mosaic, 2 the theme's own). Every look begins with Liquid.
   static const presets = <int, List<int>>{
-    0: [3, 4, 3],
-    1: [3, 15, 5],
-    2: [3, 11, 2],
+    0: [3, 4, 6],
+    1: [3, 15, 6],
+    2: [3, 11, 6],
   };
 
   /// These settings with the look [to] in use: what the look in use has is put away, and the look [to] has what it had, or
@@ -835,10 +835,10 @@ class RuleSettings {
     habit: (r['habit'] as int? ?? 2).clamp(0, 3),
     bg: () {
       // (nothing stored: the theme's own sheet)
-      if (r['bg'] == null) return 2;
+      if (r['bg'] == null) return 6;
       final v = r['bg'] as int? ?? 0;
       final ver = r['bgV'] as int? ?? 1;
-      if (ver >= 5) return v.clamp(0, 5);
+      if (ver >= 5) return v.clamp(0, 6);
       if (ver == 4) {
         // (the ball is gone: aurora instead; sunset and pulse moved up)
         const moved = [0, 1, 2, 0, 3, 4];
@@ -1064,6 +1064,7 @@ class EngineState {
     this.siteServers = const {},
     this.updating = const {},
     this.subFlash = const {},
+    this.offline = false,
   });
 
   final bool ready;
@@ -1120,6 +1121,9 @@ class EngineState {
   /// the subscriptions being loaded now (by link), and the outcome of the last load for a couple of seconds
   final Set<String> updating;
   final Map<String, bool> subFlash;
+
+  /// the phone has no network at all (no Wi-Fi, no mobile data): the ping says so instead of a dash
+  final bool offline;
 
   /// the address and country the traffic leaves from (when the IP check is on)
   final String exitIp;
@@ -1196,6 +1200,7 @@ class EngineState {
     Map<String, String>? siteServers,
     Set<String>? updating,
     Map<String, bool>? subFlash,
+    bool? offline,
     String? exitIp,
     List<SubInfo>? subs,
     Map<String, String>? providers,
@@ -1231,6 +1236,7 @@ class EngineState {
     siteServers: siteServers ?? this.siteServers,
     updating: updating ?? this.updating,
     subFlash: subFlash ?? this.subFlash,
+    offline: offline ?? this.offline,
     exitIp: exitIp ?? this.exitIp,
     subs: subs ?? this.subs,
     providers: providers ?? this.providers,
@@ -2988,6 +2994,22 @@ class Engine extends Notifier<EngineState> {
       final target = pingTarget(state.rules);
       // the app's own request through the tunnel, not the core's delay test: that one is written into the history
       // Auto chooses by, and a probe of the server in use made the choice jump from server to server
+      // first: is there a network at all? With none the ping says "нет сети" at once (a probe would wait out its
+      // timeout first) and nothing is asked
+      var offline = false;
+      try {
+        offline = (await _vpn.invokeMethod<bool>('online')) == false;
+      } catch (_) {}
+      if (offline != state.offline) {
+        final back = state.offline && !offline;
+        state = state.copyWith(offline: offline);
+        // the network came back: the servers were tested while there was none (their names did not even resolve) and
+        // all counted as dead until the next round minutes later; they are tested again once the network has settled
+        if (back) {
+          Timer(const Duration(seconds: 3), () => unawaited(testAll()));
+        }
+      }
+      if (offline) return;
       var d = await _httpDelay(target);
       d ??= await _httpDelay(target);
       if (d != null) _answered = true;

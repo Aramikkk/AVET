@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:avet/data/server_name.dart';
 import 'package:avet/state/engine.dart';
 import 'package:avet/ui/home_mosaic.dart';
 import 'package:avet/ui/home_studio.dart';
@@ -160,6 +161,10 @@ class _ShellState extends ConsumerState<Shell>
     }
   }
 
+  /// the country of the server in use last seen (its change flashes the server's block green)
+  String? _country;
+  String? _net;
+
   /// the tab shown: a notifier, because the pages live in a route that is built once and has to follow it
   final _tabNotifier = ValueNotifier<int>(2);
   int get _tab => _tabNotifier.value;
@@ -217,12 +222,54 @@ class _ShellState extends ConsumerState<Shell>
     // Superlight: the main page and the settings only
     final light = ref.watch(engineProvider.select((e) => e.rules.superLight));
     final tab = light ? 2 : _tab;
+    // (the moving sheet of "Перелив" only behind the home screen; set after this frame: it is a notifier)
+    // (the moving sheets move behind every tab, not behind a page opened over them)
+    final onHome = !_pageOpen;
+    WidgetsBinding.instance.addPostFrameCallback((_) => Sheen.homeTab(onHome));
     homeVisibleNow =
         (_tab == 2 || light) &&
         !_pageOpen &&
         ref.watch(engineProvider.select((e) => e.rules.style)) == 0;
     dotsNow = ref.watch(engineProvider.select((e) => e.rules.dots));
     hapticsNow = ref.watch(engineProvider.select((e) => e.rules.haptics));
+    // the ping is slow (red): the ping block's rim turns red too (see Sheen)
+    Sheen.alarm = ref.watch(
+      engineProvider.select(
+        (e) => e.on && e.ping != null && e.ping! >= e.slowAt,
+      ),
+    );
+    // more than half of the multi-servers slow or silent: their block goes red
+    Sheen.multiAlarm = ref.watch(
+      engineProvider.select((e) {
+        if (!e.on || !e.sitesMeasured || e.rules.homeSites.isEmpty) {
+          return false;
+        }
+        final bad = e.rules.homeSites.where((k) {
+          final v = e.sites[k];
+          return v == null || v >= e.slowAt;
+        }).length;
+        return bad * 2 > e.rules.homeSites.length;
+      }),
+    );
+    // the phone moved to another network: the ping's block flashes blue (Wi-Fi) or light blue (mobile data)
+    final net = ref.watch(
+      engineProvider.select((e) => e.on ? e.network : null),
+    );
+    if (net != null && _net != null && net != _net) {
+      Sheen.netAt = DateTime.now();
+      Sheen.netMobile = net == 'mobile';
+    }
+    if (net != null) _net = net;
+    // the country of the server in use changed: its block flashes green
+    final country = ref.watch(
+      engineProvider.select(
+        (e) => e.current == null ? null : ServerName.of(e.current!).title,
+      ),
+    );
+    if (country != null && _country != null && country != _country) {
+      Sheen.greenAt = DateTime.now();
+    }
+    if (country != null) _country = country;
     // the VPN is off: the moving backgrounds stand still and the screen goes grey (apart from the power switch)
     final running = ref.watch(
       engineProvider.select((e) => e.phase != Phase.off),

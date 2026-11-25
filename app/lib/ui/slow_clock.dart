@@ -20,6 +20,9 @@ class SlowClock extends ChangeNotifier implements ValueListenable<double> {
   /// the beat is not told to the painters until then (milliseconds of [_now])
   static int _holdUntil = 0;
 
+  /// when the present hold began (microseconds of [_now]), null when none
+  static int? _heldSince;
+
   /// Holds the beat for a moment (called at every frame of a motion that matters: a page sliding in, a swipe between tabs):
   /// the sheets behind stand still for it. A frame that has to draw the moving page and the redrawn sheet as well was the
   /// heavy one that came every 50 ms, and a heavy frame is a missed refresh: the motion went in jerks. The hold lapses by
@@ -39,7 +42,20 @@ class SlowClock extends ChangeNotifier implements ValueListenable<double> {
     _from = _value;
     _startedAt = _now.elapsedMicroseconds;
     _timer ??= Timer.periodic(beat, (_) {
-      if (_now.elapsedMilliseconds < _holdUntil) return;
+      // held: the clocks' time stands still too, so that after the hold they go on from where they stopped (they used to
+      // keep counting and leapt ahead when the motion that held them ended)
+      if (_now.elapsedMilliseconds < _holdUntil) {
+        _heldSince ??= _now.elapsedMicroseconds;
+        return;
+      }
+      final since = _heldSince;
+      if (since != null) {
+        final held = _now.elapsedMicroseconds - since;
+        for (final c in _running) {
+          c._startedAt += held;
+        }
+        _heldSince = null;
+      }
       final t = _now.elapsedMicroseconds;
       for (final c in [..._running]) {
         final p = c.period.inMicroseconds;

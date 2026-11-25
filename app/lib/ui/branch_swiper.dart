@@ -4,6 +4,7 @@ import 'package:avet/ui/motion.dart';
 import 'package:avet/ui/slow_clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 /// The phone's tabs, kept alive like an indexed stack. They change in depth: the old tab fades and shrinks a little, the
@@ -54,6 +55,35 @@ class _BranchSwiperState extends State<BranchSwiper>
   /// the change of tab is a swipe's own (it slides on from where the finger let go), not one asked for by the bar
   bool _swiping = false;
 
+  /// The tab in front is drawn in a layer of its own from the moment a finger comes down (or a tab is chosen in the bar),
+  /// before anything moves: the first frame of a fade (the layer made, the page drawn into it) took 30 ms, and the motion
+  /// stood still for it and then jumped.
+  bool _armed = false;
+
+  /// For one frame the tabs that may come next are drawn too, all but unseen: the first frame a page is shown it is
+  /// drawn for the first time (its pictures, its images, its letters), and that frame took 35 ms in the middle of the
+  /// motion. Done when the finger comes down (or a tab is chosen), when nothing moves yet.
+  bool _warm = false;
+
+  void _warmUp() {
+    // (off: drawing the next tabs as well made every frame heavier and the stall stayed)
+    return;
+    // ignore: dead_code
+    _warm = true;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _warm) setState(() => _warm = false);
+    });
+  }
+
+  /// the place of a tab drawn for [_warm]: so far that it is all but transparent (an opacity of .001), yet drawn
+  static const _warmPlace = .4995;
+
+  void _disarm() {
+    if (!_armed || !mounted) return;
+    if (_previous != null || _drag != 0 || _return.isAnimating) return;
+    setState(() => _armed = false);
+  }
+
   double _raw = 0;
   double _swipeVelocity = 0;
 
@@ -64,6 +94,9 @@ class _BranchSwiperState extends State<BranchSwiper>
     // as the old one, and the first swipe on a cold start went the wrong way
     _current = widget.index;
     _return.addListener(() => setState(() => _drag = _return.value));
+    _return.addStatusListener((s) {
+      if (s == AnimationStatus.completed) _disarm();
+    });
   }
 
   @override
@@ -74,29 +107,23 @@ class _BranchSwiperState extends State<BranchSwiper>
     _direction = index > _current ? 1 : -1;
     if (_from == null) {
       // a tab chosen in the bar: the same depth as a swipe, from the start
-      _slide.stop();
+      _stopDrive();
       _return.stop();
       _swiping = true;
       _previous = _current;
       _current = index;
       _drag = 0;
       _slide.value = 0;
-      _slide
-          .animateTo(
-            1,
-            duration: reduceMotionNow
-                ? Duration.zero
-                : const Duration(milliseconds: 320),
-            curve: Curves.easeOutCubic,
-          )
-          .whenComplete(() {
-            if (mounted) {
-              setState(() {
-                _previous = null;
-                _swiping = false;
-              });
-            }
-          });
+      // one frame in place with the layer made and the new tab drawn, then the motion (see [_armed], [_warm])
+      _armed = true;
+      _warmUp();
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _previous == null) return;
+        _drive(
+          reduceMotionNow ? null : _Eased(0.32, Curves.easeOutCubic),
+          _settled,
+        );
+      });
       return;
     }
     _swiping = true;
@@ -106,28 +133,62 @@ class _BranchSwiperState extends State<BranchSwiper>
     _from = null;
     _drag = 0;
     _slide.value = from;
-    (!reduceMotionNow
-            ? _slide.animateWith(
-                SpringSimulation(
-                  fluidSpring(response: .3),
-                  from,
-                  1,
-                  _swipeVelocity,
-                ),
-              )
-            : _slide.animateTo(1, duration: Duration.zero))
-        .whenComplete(() {
-          if (mounted) {
-            setState(() {
-              _previous = null;
-              _swiping = false;
-            });
-          }
-        });
+    _drive(
+      reduceMotionNow
+          ? null
+          // the rest of the way goes on at the finger's own speed and slows to rest (a spring sped up after the finger
+          // was let go: the motion seemed to stand and then leap)
+          : _GoesOn(from, _swipeVelocity),
+      _settled,
+    );
+  }
+
+  void _settled() {
+    if (!mounted) return;
+    setState(() {
+      _previous = null;
+      _swiping = false;
+    });
+    _disarm();
+  }
+
+  Ticker? _ticker;
+  double _virtual = 0;
+  Duration _last = Duration.zero;
+
+  /// Runs the change of tab along [sim] (to 1) on a clock that never jumps: a frame that came late (a heavy one) moves
+  /// the motion on by one frame's time at most, so a slow frame slows it a little instead of making it stand and then
+  /// leap. Null: at once.
+  void _drive(Simulation? sim, VoidCallback done) {
+    _stopDrive();
+    if (sim == null) {
+      _slide.value = 1;
+      done();
+      return;
+    }
+    _virtual = 0;
+    _last = Duration.zero;
+    _ticker = createTicker((elapsed) {
+      final step = ((elapsed - _last).inMicroseconds / 1e6).clamp(0.0, 1 / 60);
+      _last = elapsed;
+      _virtual += step;
+      final done0 = sim.isDone(_virtual);
+      _slide.value = done0 ? 1 : sim.x(_virtual).clamp(0.0, 1.0);
+      if (done0) {
+        _stopDrive();
+        done();
+      }
+    })..start();
+  }
+
+  void _stopDrive() {
+    _ticker?.dispose();
+    _ticker = null;
   }
 
   @override
   void dispose() {
+    _stopDrive();
     _slide.dispose();
     _return.dispose();
     super.dispose();
@@ -143,7 +204,7 @@ class _BranchSwiperState extends State<BranchSwiper>
   /// coming takes the finger from where it is now, nothing waits for the motion to end and nothing jumps.
   void _takeOver() {
     if (_previous == null) return;
-    _slide.stop();
+    _stopDrive();
     _drag = _swiping ? (_direction * (1 - _slide.value)).clamp(-1.0, 1.0) : 0;
     _previous = null;
     _swiping = false;
@@ -153,6 +214,12 @@ class _BranchSwiperState extends State<BranchSwiper>
     _return.stop();
     if (_previous != null) setState(_takeOver);
     _raw = _drag;
+    if (!_armed) {
+      setState(() {
+        _armed = true;
+        _warmUp();
+      });
+    }
   }
 
   void _dragged(DragUpdateDetails details) {
@@ -170,7 +237,10 @@ class _BranchSwiperState extends State<BranchSwiper>
   /// let go: where the flick would come to rest decides (the nearer of this tab and the next), and what follows
   /// carries on from the finger's own speed
   void _released(DragEndDetails details) {
-    if (_previous != null || _drag == 0) return;
+    if (_previous != null || _drag == 0) {
+      _disarm();
+      return;
+    }
     final width = context.size?.width ?? 1;
     final velocity = details.primaryVelocity ?? 0;
     final next = _neighbour(_raw);
@@ -201,8 +271,12 @@ class _BranchSwiperState extends State<BranchSwiper>
   Widget _moved(double x, Widget child) {
     // (always the same wrapping, at rest too: a tab taken out of it or put into it was built anew)
     final a = x.abs().clamp(0.0, 1.0);
+    // the two pages overlap a little in the middle (each is seen up to .6 of the way): with no overlap there was a moment
+    // when neither was seen, and the motion looked as if it stood still there
+    final opacity = ((.6 - a) / .6).clamp(0.0, 1.0);
     return Opacity(
-      opacity: (1 - 2 * a).clamp(0.0, 1.0),
+      // (armed: a layer of its own already, see [_armed])
+      opacity: _armed && opacity == 1 ? .999 : opacity,
       child: Transform.scale(scale: 1 - .06 * a, child: child),
     );
   }
@@ -221,7 +295,9 @@ class _BranchSwiperState extends State<BranchSwiper>
           x,
           IgnorePointer(
             ignoring: !live,
-            child: TickerMode(enabled: live, child: content),
+            // a tab coming into sight runs its own motions already (its figures and charts): held still until the
+            // finger was let go, they all started at once then, and the page seemed to leap
+            child: TickerMode(enabled: live || shown, child: content),
           ),
         ),
       );
@@ -232,16 +308,25 @@ class _BranchSwiperState extends State<BranchSwiper>
       final pages = <(int, double, bool, bool)>[];
       for (var i = 0; i < widget.children.length; i++) {
         if (i == _current) {
+          final x = _previous == null ? _drag : _direction * (1 - t);
           pages.add((
             i,
-            _previous == null ? _drag : _direction * (1 - t),
+            _warm && x.abs() >= .5 ? _warmPlace * x.sign : x,
             true,
             true,
           ));
         } else if (i == _previous) {
           pages.add((i, -_direction * t, true, false));
         } else if (i == neighbour) {
-          pages.add((i, _drag + (_drag < 0 ? 1 : -1), true, false));
+          final x = _drag + (_drag < 0 ? 1 : -1);
+          pages.add((
+            i,
+            _warm && x.abs() >= .5 ? _warmPlace * x.sign : x,
+            true,
+            false,
+          ));
+        } else if (_warm && _previous == null && (i - _current).abs() == 1) {
+          pages.add((i, _warmPlace * (i - _current), true, false));
         } else {
           pages.add((i, 0, false, false));
         }
@@ -260,7 +345,7 @@ class _BranchSwiperState extends State<BranchSwiper>
         animation: _slide,
         builder: (context, _) {
           // (the sheets behind stand still while the pages move)
-          if (_slide.isAnimating || _return.isAnimating || _drag != 0) {
+          if (_ticker != null || _return.isAnimating || _drag != 0) {
             SlowClock.hold();
           }
           return Stack(children: stack(_slide.value));
@@ -289,4 +374,45 @@ class _SideClip extends CustomClipper<Rect> {
 
   @override
   bool shouldReclip(_SideClip old) => false;
+}
+
+/// A plain eased motion from 0 to 1 over [seconds], as a simulation (for the clock that does not jump).
+class _Eased extends Simulation {
+  _Eased(this.seconds, this.curve);
+
+  final double seconds;
+  final Curve curve;
+
+  @override
+  double x(double time) => curve.transform((time / seconds).clamp(0.0, 1.0));
+
+  @override
+  double dx(double time) => 0;
+
+  @override
+  bool isDone(double time) => time >= seconds;
+}
+
+/// The rest of a change of tab after the finger is let go: it starts at the finger's own speed [speed] (widths a second)
+/// and slows evenly to rest at 1. A slow finger is helped a little (at most half a second), a fast one is not outrun.
+class _GoesOn extends Simulation {
+  _GoesOn(this.from, double speed)
+    : seconds = speed <= 0
+          ? .4
+          : (2 * (1 - from) / speed).clamp(.16, .5).toDouble();
+
+  final double from;
+  final double seconds;
+
+  @override
+  double x(double time) {
+    final p = (time / seconds).clamp(0.0, 1.0);
+    return from + (1 - from) * (1 - (1 - p) * (1 - p));
+  }
+
+  @override
+  double dx(double time) => 0;
+
+  @override
+  bool isDone(double time) => time >= seconds;
 }

@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:avet/ui/motion.dart';
 import 'package:avet/ui/slow_clock.dart';
+import 'package:avet/ui/widgets.dart' show Sheen;
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 
@@ -17,10 +18,11 @@ abstract final class Backdrops {
     'Sunset',
     'Пульс',
     'Мозаика',
+    'Fallen',
   ];
 
   /// The order the choices are listed in (by their numbers): the standard sheet first, then the sunset and the aurora.
-  static const order = [2, 3, 0, 1, 4, 5];
+  static const order = [2, 6, 3, 0, 1, 4, 5];
 
   static const descriptions = [
     'Мягкие светящиеся круги цвета акцента медленно плывут по фону. Экран обновляется постоянно: чуть больше батареи. Стоят на месте при «Лёгком виде», в Суперлайте и когда в системе отключены анимации.',
@@ -29,6 +31,7 @@ abstract final class Backdrops {
     'Шар делает полный оборот вокруг экрана, как солнце: поднимается слева, проходит сверху, спускается справа и возвращается снизу. Экран обновляется постоянно: чуть больше батареи.',
     'Шар чуть смещается и дышит, вокруг него слабое гало другого оттенка. Экран обновляется постоянно: чуть больше батареи.',
     'Мелкие плитки, как мозаика: несколько из них светятся цветом акцента, из угла падает мягкий свет. Рисуется один раз, ничего не двигается: батарею не тратит.',
+    'Тёмный фон, изредка падают приглушённые метеоры цвета акцента. Когда что-то происходит, фон за блоками ненадолго подсвечивается, а рамка блока вспыхивает: пинг высокий — красным, сменилась страна — зелёным, переход на Wi-Fi — синим, на мобильную сеть — голубым.',
   ];
 
   /// The sheet [index] (0 aurora, 1 topography, 3 sunset, 4 pulse) over the plain [paper].
@@ -43,10 +46,48 @@ abstract final class Backdrops {
           3 => _Ball(colours, _BallMode.sunset),
           4 => _Ball(colours, _BallMode.pulse),
           5 => _Mosaic(colours),
+          // the sheen's sheet: rising motes of the accent, and a glow of what is happening behind the blocks
+          6 => _Motes(colours),
           _ => _Aurora(colours, animated: true),
         },
       ],
     );
+  }
+}
+
+/// Whether the moving sheets may move now: only behind the home screen (not behind the settings or the other tabs), with
+/// the VPN on and the animations of the system allowed.
+bool get _sheetMoves =>
+    !reduceMotionNow && !backdropFrozenNow && Sheen.home.value;
+
+/// Starts and stops a sheet's clock as [_sheetMoves] changes (the home screen comes to the front or leaves it).
+mixin _MovesOnHome<T extends StatefulWidget> on State<T> {
+  SlowClock get sheetClock;
+  bool get wantsToMove => true;
+
+  void _follow() {
+    final go = wantsToMove && _sheetMoves;
+    if (go && !sheetClock.running) sheetClock.start();
+    if (!go && sheetClock.running) sheetClock.stop();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    Sheen.home.addListener(_follow);
+    _follow();
+  }
+
+  @override
+  void didUpdateWidget(T old) {
+    super.didUpdateWidget(old);
+    _follow();
+  }
+
+  @override
+  void dispose() {
+    Sheen.home.removeListener(_follow);
+    super.dispose();
   }
 }
 
@@ -64,16 +105,17 @@ class _Colours {
       .withSaturation(
         dark
             ? hsl.saturation.clamp(.6, 1.0)
-            : (hsl.saturation * .85).clamp(.3, .85),
+            : (hsl.saturation * .95).clamp(.45, 1.0),
       )
-      .withLightness(light ?? (dark ? .5 : .72))
+      // (by day a little richer than it was: at .72 the colour all but melted into the light sheet)
+      .withLightness(light ?? (dark ? .5 : .62))
       .toColor()
       .withValues(alpha: alpha.clamp(0.0, 1.0));
 
   // the circles are all of the accent (their strength differs a little)
-  Color get a => hue(0, dark ? .5 : .66);
-  Color get b => hue(0, dark ? .42 : .58);
-  Color get c => hue(0, dark ? .4 : .56);
+  Color get a => hue(0, dark ? .5 : .8);
+  Color get b => hue(0, dark ? .42 : .72);
+  Color get c => hue(0, dark ? .4 : .7);
 
   @override
   bool operator ==(Object other) =>
@@ -95,24 +137,14 @@ class _Dots extends StatefulWidget {
   State<_Dots> createState() => _DotsState();
 }
 
-class _DotsState extends State<_Dots> {
+class _DotsState extends State<_Dots> with _MovesOnHome {
   late final SlowClock _flow = SlowClock(const Duration(seconds: 28));
 
   @override
-  void initState() {
-    super.initState();
-    if (widget.animated && !reduceMotionNow && !backdropFrozenNow) {
-      _flow.start();
-    }
-  }
+  SlowClock get sheetClock => _flow;
 
   @override
-  void didUpdateWidget(_Dots old) {
-    super.didUpdateWidget(old);
-    final go = widget.animated && !reduceMotionNow && !backdropFrozenNow;
-    if (go && !_flow.running) _flow.start();
-    if (!go && _flow.running) _flow.stop();
-  }
+  bool get wantsToMove => widget.animated;
 
   @override
   void dispose() {
@@ -192,24 +224,14 @@ class _Aurora extends StatefulWidget {
   State<_Aurora> createState() => _AuroraState();
 }
 
-class _AuroraState extends State<_Aurora> {
+class _AuroraState extends State<_Aurora> with _MovesOnHome {
   late final SlowClock _drift = SlowClock(const Duration(seconds: 32));
 
   @override
-  void initState() {
-    super.initState();
-    if (widget.animated && !reduceMotionNow && !backdropFrozenNow) {
-      _drift.start();
-    }
-  }
+  SlowClock get sheetClock => _drift;
 
   @override
-  void didUpdateWidget(_Aurora old) {
-    super.didUpdateWidget(old);
-    final go = widget.animated && !reduceMotionNow && !backdropFrozenNow;
-    if (go && !_drift.running) _drift.start();
-    if (!go && _drift.running) _drift.stop();
-  }
+  bool get wantsToMove => widget.animated;
 
   @override
   void dispose() {
@@ -276,7 +298,7 @@ class _Ball extends StatefulWidget {
   State<_Ball> createState() => _BallState();
 }
 
-class _BallState extends State<_Ball> {
+class _BallState extends State<_Ball> with _MovesOnHome {
   late final SlowClock _run = SlowClock(
     Duration(
       seconds: switch (widget.mode) {
@@ -287,18 +309,7 @@ class _BallState extends State<_Ball> {
   );
 
   @override
-  void initState() {
-    super.initState();
-    if (!reduceMotionNow && !backdropFrozenNow) _run.start();
-  }
-
-  @override
-  void didUpdateWidget(_Ball old) {
-    super.didUpdateWidget(old);
-    final still = reduceMotionNow || backdropFrozenNow;
-    if (!still && !_run.running) _run.start();
-    if (still && _run.running) _run.stop();
-  }
+  SlowClock get sheetClock => _run;
 
   @override
   void dispose() {
@@ -345,7 +356,7 @@ class _BallPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final t = run.value;
-    final a = colours.dark ? .54 : .66;
+    final a = colours.dark ? .54 : .8;
     switch (mode) {
       case _BallMode.sunset:
         // a full circuit round the screen: up on the left, over the top, down on the right, back under the bottom (the
@@ -454,4 +465,140 @@ class _MosaicPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_MosaicPainter old) => old.colours != colours;
+}
+
+/// The "Перелив" sheet: now and then a toned-down meteor of the accent falls across the screen; when something happens (a
+/// slow ping, another network, a new country) the sheet behind the blocks glows in its colour for a moment.
+class _Motes extends StatefulWidget {
+  const _Motes(this.colours);
+
+  final _Colours colours;
+
+  @override
+  State<_Motes> createState() => _MotesState();
+}
+
+class _MotesState extends State<_Motes> with _MovesOnHome {
+  /// the loop of the meteors: eighteen in it (one every 3 s, as often as the ping is asked), one at a time, each from its own place (the sky does not repeat for a minute)
+  late final SlowClock _clock = SlowClock(const Duration(seconds: 54));
+
+  @override
+  SlowClock get sheetClock => _clock;
+
+  @override
+  void dispose() {
+    _clock.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => SizedBox.expand(
+    child: CustomPaint(painter: _MotesPainter(widget.colours, _clock)),
+  );
+}
+
+class _MotesPainter extends CustomPainter {
+  _MotesPainter(this.colours, this.clock)
+    : super(repaint: Listenable.merge([clock, Sheen.home]));
+
+  final _Colours colours;
+  final ValueListenable<double> clock;
+
+  /// how far the event's glow is lit, and its colour (kept while it fades)
+  static double _lit = 0;
+  static Color? _glow;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    // only behind the home screen
+    if (!Sheen.home.value) return;
+    // the glow of what is happening: it comes and goes smoothly
+    final want = Sheen.eventColour();
+    if (want != null) _glow = want;
+    _lit += ((want != null ? 1.0 : 0.0) - _lit) * .08;
+    final glow = _glow;
+    if (glow != null && _lit > .01) {
+      final rect = Rect.fromCircle(
+        center: Offset(w * .5, h * .36),
+        radius: w * .95,
+      );
+      canvas.drawRect(
+        Offset.zero & size,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              glow.withValues(alpha: (colours.dark ? .2 : .16) * _lit),
+              glow.withValues(alpha: 0),
+            ],
+          ).createShader(rect),
+      );
+    }
+    // now and then a meteor: a short streak of the accent, toned down, falling on a slant from the upper right to the
+    // lower left with a fading tail. Eighteen of them in the loop, one at a time, each at its own time and place
+    final hsl = HSLColor.fromColor(colours.hue(0, 1));
+    final muted = hsl
+        .withSaturation(hsl.saturation * .55)
+        .withLightness(colours.dark ? .72 : .42)
+        .toColor();
+    final strength = colours.dark ? .55 : .85;
+    // (when in the loop it starts; where it starts, anywhere on the screen: across of the width and down of the height;
+    // how steep it falls: the same slant for all)
+    const meteors = [
+      (0.0050, 0.49, 0.13, .62),
+      (0.0606, 0.73, 0.08, .62),
+      (0.1161, 0.64, 0.28, .62),
+      (0.1717, 0.29, 0.37, .62),
+      (0.2272, 0.28, 0.32, .62),
+      (0.2828, 0.3, 0.09, .62),
+      (0.3383, 0.56, 0.58, .62),
+      (0.3939, 0.34, 0.18, .62),
+      (0.4494, 0.71, 0.66, .62),
+      (0.5050, 0.67, 0.3, .62),
+      (0.5606, 0.96, 0.06, .62),
+      (0.6161, 0.88, 0.22, .62),
+      (0.6717, 0.36, 0.11, .62),
+      (0.7272, 0.48, 0.58, .62),
+      (0.7828, 0.38, 0.42, .62),
+      (0.8383, 0.72, 0.28, .62),
+      (0.8939, 0.65, 0.07, .62),
+      (0.9494, 0.29, 0.17, .62),
+    ];
+    const flight = .028; // of the loop: about 1.5 s
+    for (final (start, fromX, fromY, steep) in meteors) {
+      final p = (clock.value - start) / flight;
+      if (p < 0 || p > 1) continue;
+      final eased = Curves.easeIn.transform(p);
+      // the way it goes: the same length whatever the slope
+      final dir = Offset(-1, steep) / math.sqrt(1 + steep * steep);
+      final travel = w * .5;
+      final head = Offset(w * fromX, h * fromY) + dir * (travel * eased);
+      final tailLength =
+          w * .16 * (.4 + .6 * math.sin(math.pi * math.min(p * 1.4, 1)));
+      final tail = head - dir * tailLength;
+      final fade = math.sin(math.pi * p); // in, then out
+      final a = strength * fade;
+      canvas.drawLine(
+        tail,
+        head,
+        Paint()
+          ..strokeWidth = 1.6
+          ..strokeCap = StrokeCap.round
+          ..shader = ui.Gradient.linear(tail, head, [
+            muted.withValues(alpha: 0),
+            muted.withValues(alpha: a),
+          ]),
+      );
+      canvas.drawCircle(
+        head,
+        2.2,
+        Paint()
+          ..color = muted.withValues(alpha: a * .9)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_MotesPainter old) => old.colours != colours;
 }
