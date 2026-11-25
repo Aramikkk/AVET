@@ -155,33 +155,6 @@
 
 Требуется Android 7.0 или новее, процессор arm64. Разрешение на VPN и уведомления запрашивается при первом подключении.
 
-## Структура репозитория
-
-| Каталог | Содержимое |
-| --- | --- |
-| `app/` | Приложение на Flutter (Dart), Android-часть на Kotlin в `app/android` |
-| `core/` | Ядро: `libbox` из sing-box и слой `avcore`; патчи к sing-box (`core/smart`, `core/timeout`, `core/xhttp`) |
-| `app/android/app/libs/avcore.aar` | Собранное ядро (arm64): приложение собирается без Go |
-| `brand/` | Логотип и иконки |
-| `docs/` | Изображения для README |
-
-В коде есть заготовка для Windows (`app/windows`), в релизы она не входит.
-
-## Сборка
-
-Требуются Flutter (Dart `^3.10`) и Android SDK.
-
-```
-cd app
-flutter pub get
-flutter test
-flutter build apk --release --target-platform android-arm64
-```
-
-Для подписи релиза создайте `app/android/key.properties` с полями `storeFile`, `storePassword`, `keyAlias`, `keyPassword`. Без него сборка подписывается отладочным ключом.
-
-Пересборка ядра необязательна. Для неё нужны Go, `gomobile` и Android NDK; запускается `core/build-android.sh`. Скрипты написаны под окружение автора, пути в начале файлов нужно заменить на свои. Версия sing-box: 1.14.4.
-
 ## Лицензия и благодарности
 
 AVET распространяется по лицензии [GPL-3.0](LICENSE).
