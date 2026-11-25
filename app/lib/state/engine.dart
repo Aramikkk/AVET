@@ -28,6 +28,18 @@ enum Phase { off, connecting, on }
 
 /// The rules the user turned on (kept in rules.json).
 /// The palette lost raspberry, coral, pink and amber ('accentV' 4, the wine reds came in): they go to the nearest left.
+/// The garnet (3) and the bordeaux (5) are no longer offered: who had them has the nearest red of the list
+/// (the ruby, the burgundy).
+int _visibleAccent(int v) => switch (v) {
+  3 => 2,
+  5 => 4,
+  // the gold goes to the yellow, the cornflower and the cobalt to the blue, the lavender to the violet
+  9 => 10,
+  17 || 19 => 18,
+  22 => 21,
+  _ => v,
+};
+
 int _accentV4(int v) {
   const map = [0, 1, 2, 2, 1, 2, 7, 8, 9, 9, 10];
   return v >= 0 && v < map.length ? map[v] : v;
@@ -741,7 +753,7 @@ class RuleSettings {
     boot: r['boot'] == true,
     // the palette was changed twice ('accentV' 3 is the list now): a colour of an older list goes to the same or the
     // nearest of the new
-    accent: () {
+    accent: _visibleAccent(() {
       final v = r['accent'] as int? ?? -1;
       final ver = r['accentV'] as int? ?? 1;
       if (ver >= 4 || v < 0) return v;
@@ -788,7 +800,7 @@ class RuleSettings {
       ];
       final map = ver == 2 ? v2 : v1;
       return _accentV4(v < map.length ? map[v] : v);
-    }(),
+    }()),
     paperTone: r['paperTone'] as int? ?? 0,
     dns: r['dns'] as int? ?? 0,
     stack: r['stack'] as String? ?? 'mixed',
@@ -848,7 +860,8 @@ class RuleSettings {
       for (final e in ((r['looks'] as Map?) ?? const {}).entries)
         if (int.tryParse('${e.key}') != null && e.value is List)
           int.parse('${e.key}'): [
-            for (final v in e.value as List) (v as num).toInt(),
+            for (final (k, v) in (e.value as List).indexed)
+              k == 1 ? _visibleAccent((v as num).toInt()) : (v as num).toInt(),
           ],
     },
     priorityWifi: r['priorityWifi'] as int? ?? 100,

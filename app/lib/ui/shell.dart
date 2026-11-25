@@ -256,7 +256,14 @@ class _ShellState extends ConsumerState<Shell>
           );
           // a page opened over the screen: the screen goes back in depth (the page's sheet covers it as it comes); the
           // same wrapping at rest too, or the whole screen was built anew when a page opened
-          return Transform.scale(scale: 1 - .06 * t, child: scaffold);
+          return Transform.scale(
+            scale: 1 - .06 * t,
+            // (its own motions wait meanwhile: a moving screen would be pictured anew at every frame)
+            child: Frozen(
+              frozen: t > 0,
+              child: TickerMode(enabled: t == 0, child: scaffold!),
+            ),
+          );
         },
         child: Scaffold(
           backgroundColor: Colors.transparent,

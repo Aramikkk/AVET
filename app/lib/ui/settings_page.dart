@@ -3606,7 +3606,7 @@ class _Themes extends ConsumerWidget {
             r.tintIcon,
             (v) => engine.setRules(r.copyWith(tintIcon: v)),
             hint:
-                'Иконка на рабочем столе повторяет цвет акцента. Система обновляет её не сразу, на это время иконка может пропасть',
+                'Иконка на рабочем столе повторяет цвет акцента. Она меняется, когда вы выходите из приложения; на пару секунд может пропасть.',
             icon: Icons.palette_outlined,
           ),
         ),
@@ -3749,53 +3749,91 @@ class _Themes extends ConsumerWidget {
         Paper(
           radius: 18,
           padding: const EdgeInsets.fromLTRB(10, 16, 10, 8),
-          child: GridView.count(
-            crossAxisCount: 6,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 2,
-            childAspectRatio: .66,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final (i, name) in Palette.accentNames.indexed)
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => engine.setRules(r.copyWith(accent: i)),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 50,
-                        height: 50,
-                        padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color:
-                                (chosenAccent == i ||
-                                    (chosenAccent < 0 &&
-                                        i == (r.style >= 1 ? 18 : 0)))
-                                ? ink
-                                : Colors.transparent,
-                            width: 2.2,
-                          ),
-                        ),
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: Palette.accentOn(i, dark),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: mono(context, 11, colour: soft, spacing: 0),
-                      ),
-                    ],
+              for (final (k, list) in [
+                [
+                  for (var n = 0; n < Palette.brightAccents; n++)
+                    if (!Palette.hiddenAccents.contains(n)) n,
+                ],
+                [
+                  for (
+                    var n = Palette.brightAccents;
+                    n < Palette.accents.length;
+                    n++
+                  )
+                    n,
+                ],
+              ].indexed) ...[
+                if (k == 1)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(6, 12, 6, 8),
+                    child: Text(
+                      'Яркие и неоновые',
+                      style: mono(context, 12, colour: soft, spacing: 0),
+                    ),
                   ),
+                GridView.count(
+                  crossAxisCount: 6,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 2,
+                  childAspectRatio: .66,
+                  children: [
+                    for (final i in list)
+                      Builder(
+                        builder: (context) {
+                          final name = Palette.accentNames[i];
+                          return GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => engine.setRules(r.copyWith(accent: i)),
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: 50,
+                                  height: 50,
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color:
+                                          (chosenAccent == i ||
+                                              (chosenAccent < 0 &&
+                                                  i == (r.style >= 1 ? 18 : 0)))
+                                          ? ink
+                                          : Colors.transparent,
+                                      width: 2.2,
+                                    ),
+                                  ),
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      color: Palette.accentOn(i, dark),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: mono(
+                                    context,
+                                    11,
+                                    colour: soft,
+                                    spacing: 0,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                  ],
                 ),
+              ],
             ],
           ),
         ),

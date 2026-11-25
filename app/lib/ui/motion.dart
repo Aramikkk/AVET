@@ -1,6 +1,5 @@
+import 'package:flutter/widgets.dart';
 import 'dart:math' as math;
-
-import 'package:flutter/animation.dart';
 
 /// Motion that follows the finger and carries on from it (the way Apple's fluid interfaces do): a spring that keeps the
 /// velocity of the release, the place a flick would come to rest, and a soft edge that resists more the further it is
@@ -60,4 +59,41 @@ double rubberBand(double overshoot, double dimension, {double constant = .55}) {
   final over = overshoot.abs();
   final shown = (over * dimension * constant) / (dimension + constant * over);
   return overshoot < 0 ? -shown : shown;
+}
+
+/// While [frozen], [child] is shown as a picture of itself taken once (a fading, scaling page drawn anew at every frame
+/// of its motion cost 12 to 20 ms a frame: the motion ran at 50 frames a second instead of 120). At rest it is the live
+/// child. The wrapping stays the same either way, so nothing is built anew when the motion begins or ends.
+class Frozen extends StatefulWidget {
+  const Frozen({super.key, required this.frozen, required this.child});
+
+  final bool frozen;
+  final Widget child;
+
+  @override
+  State<Frozen> createState() => _FrozenState();
+}
+
+class _FrozenState extends State<Frozen> {
+  late final _controller = SnapshotController(allowSnapshotting: widget.frozen);
+
+  @override
+  void didUpdateWidget(Frozen old) {
+    super.didUpdateWidget(old);
+    _controller.allowSnapshotting = widget.frozen;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => SnapshotWidget(
+    controller: _controller,
+    mode: SnapshotMode.permissive,
+    autoresize: true,
+    child: widget.child,
+  );
 }

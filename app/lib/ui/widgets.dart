@@ -36,16 +36,40 @@ abstract final class Palette {
     Color(0xFFA66BFF),
     Color(0xFFB9A8FF),
     Color(0xFFF2F2EE),
+    // the bright ones, the acid and the neon (added after the ink: the places of the older colours stay what they were)
+    Color(0xFFCCFF00),
+    Color(0xFF39FF14),
+    Color(0xFFFFEA00),
+    Color(0xFFFF6A00),
+    Color(0xFFFF1F4B),
+    Color(0xFFFF2BD6),
+    Color(0xFF00E5FF),
+    Color(0xFF2E5BFF),
+    Color(0xFFB026FF),
+    Color(0xFFFFB000),
+    Color(0xFF00FFA3),
+    Color(0xFFFF0A78),
   ];
+
+  /// the place of the ink among the accents (white by night, black by day)
+  static const inkAccent = 23;
+
+  /// the places not offered any more: the garnet and the bordeaux (a red too many), the gold, the cornflower, the cobalt
+  /// and the lavender
+  static const hiddenAccents = {3, 5, 9, 17, 19, 22};
+
+  /// the bright ones begin here
+  static const brightAccents = 24;
 
   /// An accent as it reads on the paper (by day a light one is darkened) or on the black; the last one is the ink itself.
   static Color accentOn(int index, bool dark) {
     final i = index.clamp(0, accents.length - 1);
-    if (i == accents.length - 1) {
+    if (i == inkAccent) {
       return dark ? const Color(0xFFF2F2EE) : const Color(0xFF111111);
     }
     final c = accents[i];
-    if (dark) return c;
+    // (the bright ones stay as they are by day too: that is what they are for)
+    if (dark || i >= brightAccents) return c;
     final hsl = HSLColor.fromColor(c);
     return hsl.lightness > .46 ? hsl.withLightness(.4).toColor() : c;
   }
@@ -83,6 +107,18 @@ abstract final class Palette {
     'Фиолет',
     'Лаванда',
     'Без цвета',
+    'Кислота',
+    'Неон',
+    'Лимон',
+    'Оранж',
+    'Пламя',
+    'Фуксия',
+    'Электрик',
+    'Ультра',
+    'Пурпур',
+    'Янтарь',
+    'Ментол',
+    'Малина',
   ];
 
   /// the accent in use (the Themes setting changes it)
@@ -723,9 +759,13 @@ Future<void> openPage(
                       final scale = (1 - .06 * (1 - shown)) * (1 - .06 * s);
                       // (always the same wrapping: a page let out of it at the end of the motion was built anew,
                       // and it jumped)
+                      // (while it moves the page is a picture of itself)
                       return Opacity(
                         opacity: shown,
-                        child: Transform.scale(scale: scale, child: page),
+                        child: Transform.scale(
+                          scale: scale,
+                          child: Frozen(frozen: v < 1 || s > 0, child: page!),
+                        ),
                       );
                     },
                     child: RepaintBoundary(child: page),
@@ -745,6 +785,8 @@ Future<void> openPage(
                   curve: const Interval(0, .5, curve: Curves.easeInOut),
                 ),
               ),
+              // (the route is not pictured as a whole: its page fades inside it, and a picture of the route taken at the
+              // start kept the page unseen until the end)
               child: child,
             );
           },
@@ -787,8 +829,9 @@ class PageTitle extends StatelessWidget {
 }
 
 /// Two choices in one frame, the chosen half filled.
-/// A list that does not end in a hard cut: its last [height] pixels fade out into the page, so a card at the bottom edge
-/// melts away instead of being sliced.
+/// A list in its frame. (Its last pixels used to fade out into the page through a mask over the whole list: drawing the
+/// list into a layer of its own at every frame of a scroll cost 7 ms a frame, and scrolling a long list stuttered.
+/// The fade is gone; the wrapping stays, so the places that use it need not change.)
 class EdgeFade extends StatelessWidget {
   const EdgeFade({super.key, required this.child, this.height = 28});
 
@@ -796,16 +839,7 @@ class EdgeFade extends StatelessWidget {
   final double height;
 
   @override
-  Widget build(BuildContext context) => ShaderMask(
-    blendMode: BlendMode.dstIn,
-    shaderCallback: (rect) => LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: const [Colors.white, Colors.white, Color(0x00FFFFFF)],
-      stops: [0, (1 - height / rect.height).clamp(0.0, 1.0), 1],
-    ).createShader(rect),
-    child: child,
-  );
+  Widget build(BuildContext context) => child;
 }
 
 class SegmentedChoice extends StatelessWidget {

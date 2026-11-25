@@ -4,14 +4,47 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('every accent has a name, and "no colour" is the last one', () {
-    expect(Palette.accentNames.length, Palette.accents.length);
-    expect(Palette.accentNames.last, 'Без цвета');
-    expect(
-      Palette.accentOn(Palette.accents.length - 1, true),
-      const Color(0xFFF2F2EE),
-    );
-  });
+  test(
+    'every accent has a name, and "no colour" keeps its place before the bright ones',
+    () {
+      expect(Palette.accentNames.length, Palette.accents.length);
+      expect(Palette.accentNames[Palette.inkAccent], 'Без цвета');
+      expect(
+        Palette.accentOn(Palette.inkAccent, true),
+        const Color(0xFFF2F2EE),
+      );
+      expect(Palette.brightAccents, Palette.inkAccent + 1);
+    },
+  );
+
+  test(
+    'the garnet and the bordeaux are no longer offered: the nearest red takes their place',
+    () {
+      expect(
+        RuleSettings.fromJson({'lookV': 1, 'accent': 3, 'accentV': 4}).accent,
+        2,
+      );
+      expect(
+        RuleSettings.fromJson({'lookV': 1, 'accent': 5, 'accentV': 4}).accent,
+        4,
+      );
+      expect(
+        RuleSettings.fromJson({'lookV': 1, 'accent': 26, 'accentV': 4}).accent,
+        26,
+      );
+      // the gold, the cornflower, the cobalt and the lavender go too
+      for (final (from, to) in [(9, 10), (17, 18), (19, 18), (22, 21)]) {
+        expect(
+          RuleSettings.fromJson({
+            'lookV': 1,
+            'accent': from,
+            'accentV': 4,
+          }).accent,
+          to,
+        );
+      }
+    },
+  );
 
   test('a colour of an older list goes to the same or the nearest of the new', () {
     // the first list: green (5) stays green (12), sky blue (11) stays sky blue (16), "no colour" stays the last
@@ -19,7 +52,7 @@ void main() {
     expect(RuleSettings.fromJson({'lookV': 1, 'accent': 11}).accent, 16);
     expect(
       RuleSettings.fromJson({'lookV': 1, 'accent': 17}).accent,
-      Palette.accents.length - 1,
+      Palette.inkAccent,
     );
     // the list of reds and blues only (2): its blue (6) is the blue now (18)
     expect(
@@ -38,7 +71,7 @@ void main() {
     );
     expect(
       RuleSettings.fromJson({'lookV': 1, 'accent': 8, 'accentV': 3}).accent,
-      9,
+      10, // (amber went to the gold, and the gold, no longer offered, to the yellow)
     );
     expect(
       RuleSettings.fromJson({'lookV': 1, 'accent': 6, 'accentV': 3}).accent,

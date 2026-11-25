@@ -34,7 +34,16 @@ class MainActivity : FlutterActivity() {
         super.onStop()
         val service = AvetService.instance
         if (service == null) AvetService.uiForeground = false else service.setUi(false)
+        // the launcher icon asked for while the app was open is changed now that it is out of sight: switching the entry
+        // the app was started from while it is in front closes it (the system ends the task of a disabled entry)
+        pendingIcon?.let {
+            pendingIcon = null
+            setLauncherIcon(it)
+        }
     }
+
+    /** the launcher icon to show once the app leaves the screen (null: nothing to change) */
+    private var pendingIcon: Int? = null
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -50,7 +59,9 @@ class MainActivity : FlutterActivity() {
                 // the launcher icon: -1 the usual one, else the one tinted in the accent of that palette place
                 "setIcon" -> {
                     val index = call.argument<Int>("index") ?: -1
-                    result.success(setLauncherIcon(index))
+                    // (not at once: when the app leaves the screen, see onStop)
+                    pendingIcon = index
+                    result.success(true)
                 }
                 "updateDir" -> {
                     val d = java.io.File(cacheDir, "avet_update")
@@ -280,7 +291,7 @@ class MainActivity : FlutterActivity() {
     /** The launcher entry is an alias of this activity; exactly one of them is enabled. Returns whether the icon was changed. */
     private fun setLauncherIcon(index: Int): Boolean {
         val want = if (index < 0) "IconDefault" else "IconA$index"
-        val names = listOf("IconDefault") + (0 until 24).map { "IconA$it" }
+        val names = listOf("IconDefault") + (0 until 36).map { "IconA$it" }
         if (want !in names) return false
         val pm = packageManager
         fun cn(name: String) = android.content.ComponentName(packageName, "$packageName.$name")
