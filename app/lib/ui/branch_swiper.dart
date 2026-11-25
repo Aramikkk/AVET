@@ -55,6 +55,10 @@ class _BranchSwiperState extends State<BranchSwiper>
   /// the change of tab is a swipe's own (it slides on from where the finger let go), not one asked for by the bar
   bool _swiping = false;
 
+  /// the change of tab is a swipe's (the tabs slide sideways with the finger, as in most apps: they are pictures moved
+  /// about, nothing to blend, the lightest motion there is) and not the bar's (the tabs change in depth)
+  bool _bySwipe = false;
+
   /// The tab in front is drawn in a layer of its own from the moment a finger comes down (or a tab is chosen in the bar),
   /// before anything moves: the first frame of a fade (the layer made, the page drawn into it) took 30 ms, and the motion
   /// stood still for it and then jumped.
@@ -106,10 +110,11 @@ class _BranchSwiperState extends State<BranchSwiper>
     if (index == _current) return;
     _direction = index > _current ? 1 : -1;
     if (_from == null) {
-      // a tab chosen in the bar: the same depth as a swipe, from the start
+      // a tab chosen in the bar: in depth (fade and scale), from the start
       _stopDrive();
       _return.stop();
       _swiping = true;
+      _bySwipe = false;
       _previous = _current;
       _current = index;
       _drag = 0;
@@ -127,6 +132,7 @@ class _BranchSwiperState extends State<BranchSwiper>
       return;
     }
     _swiping = true;
+    _bySwipe = true;
     _previous = _current;
     _current = index;
     final from = _from ?? 0;
@@ -214,12 +220,7 @@ class _BranchSwiperState extends State<BranchSwiper>
     _return.stop();
     if (_previous != null) setState(_takeOver);
     _raw = _drag;
-    if (!_armed) {
-      setState(() {
-        _armed = true;
-        _warmUp();
-      });
-    }
+    // (no layer to make ready: a swipe slides, nothing fades)
   }
 
   void _dragged(DragUpdateDetails details) {
@@ -273,11 +274,19 @@ class _BranchSwiperState extends State<BranchSwiper>
     final a = x.abs().clamp(0.0, 1.0);
     // the two pages overlap a little in the middle (each is seen up to .6 of the way): with no overlap there was a moment
     // when neither was seen, and the motion looked as if it stood still there
-    final opacity = ((.6 - a) / .6).clamp(0.0, 1.0);
+    // a swipe, or a finger dragging: the tabs slide sideways side by side
+    final slide = _previous == null ? _drag != 0 : _bySwipe;
+    final opacity = slide ? 1.0 : ((.6 - a) / .6).clamp(0.0, 1.0);
     return Opacity(
-      // (armed: a layer of its own already, see [_armed])
-      opacity: _armed && opacity == 1 ? .999 : opacity,
-      child: Transform.scale(scale: 1 - .06 * a, child: child),
+      // (armed for the bar's fade: a layer of its own already, see [_armed])
+      opacity: !slide && _armed && opacity == 1 ? .999 : opacity,
+      child: Transform.scale(
+        scale: slide ? 1 : 1 - .06 * a,
+        child: FractionalTranslation(
+          translation: Offset(slide ? x : 0, 0),
+          child: child,
+        ),
+      ),
     );
   }
 
@@ -286,10 +295,16 @@ class _BranchSwiperState extends State<BranchSwiper>
     final neighbour = _previous == null ? _neighbour(_drag) : null;
     // every tab in the same wrapping, only its place and state changing: a tab that came into sight was rebuilt
     // in a new wrapping and stayed blank for the first frames of a drag
+    // the tab that goes away: the one under the finger while it drags, the one left behind while the change settles
+    final outgoing = _previous ?? (_drag != 0 ? _current : null);
+    final sliding = _previous == null ? _drag != 0 : _bySwipe;
     Widget tab(int i, {double x = 0, bool shown = false, bool live = false}) {
       // (a layer of its own for the page: while it slides it is a picture that is moved, not drawn again)
       final content = RepaintBoundary(child: widget.children[i]);
       return Offstage(
+        // (each tab keeps its own element whatever its place in the stack: the stack is reordered when the tab in
+        // front changes, and without a key a tab took over another's state, its picture too)
+        key: ValueKey(i),
         offstage: !shown,
         child: _moved(
           x,
@@ -297,7 +312,14 @@ class _BranchSwiperState extends State<BranchSwiper>
             ignoring: !live,
             // a tab coming into sight runs its own motions already (its figures and charts): held still until the
             // finger was let go, they all started at once then, and the page seemed to leap
-            child: TickerMode(enabled: live || shown, child: content),
+            // the tab going away is a picture of itself while it fades (it was fully seen when the motion began, so
+            // the picture is right; the tab coming in stays live): its heavy page is not drawn anew at every frame
+            // (sliding, both tabs are fully seen: both are pictures while they move, the swipe moves two images
+            // and draws nothing)
+            child: Frozen(
+              frozen: x != 0 && (i == outgoing || sliding),
+              child: TickerMode(enabled: live || shown, child: content),
+            ),
           ),
         ),
       );

@@ -284,19 +284,42 @@ class HomeSubLine extends StatelessWidget {
           ].where((e) => e.isNotEmpty).join(' '),
       ].where((e) => e.isNotEmpty).toList();
     }
-    if (state.on && state.exitIp.isNotEmpty) parts.add('IP ${state.exitIp}');
+    // the exit: "IP SE · 1.2.3.4"; with one subscription in use the country's whole name when it fits ("IP Швеция · …")
+    String? full;
+    if (state.on && state.exitIp.isNotEmpty) {
+      parts.add('IP ${state.exitIp}');
+      final code = state.exitIp.split(' · ').first.toUpperCase();
+      final name = Engine.englishCountries[code];
+      if (used.length <= 1 && name != null) {
+        full = [
+          ...parts.take(parts.length - 1),
+          'IP ${state.exitIp.replaceFirst(state.exitIp.split(' · ').first, name)}',
+        ].join(' · ');
+      }
+    }
     if (parts.isEmpty) return const SizedBox(height: 6);
+    final style = mono(context, 12, weight: FontWeight.w800, spacing: 1.6);
     return Padding(
       padding: const EdgeInsets.only(top: 2, bottom: 6),
       child: Center(
-        // the whole line, as small as it takes to fit
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            parts.join(' · '),
-            maxLines: 1,
-            style: mono(context, 12, weight: FontWeight.w800, spacing: 1.6),
-          ),
+        child: LayoutBuilder(
+          builder: (context, box) {
+            var text = parts.join(' · ');
+            if (full != null) {
+              final w = (TextPainter(
+                text: TextSpan(text: full, style: style),
+                textDirection: TextDirection.ltr,
+                maxLines: 1,
+                textScaler: MediaQuery.textScalerOf(context),
+              )..layout()).width;
+              if (w <= box.maxWidth) text = full;
+            }
+            // the whole line, as small as it takes to fit
+            return FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(text, maxLines: 1, style: style),
+            );
+          },
         ),
       ),
     );

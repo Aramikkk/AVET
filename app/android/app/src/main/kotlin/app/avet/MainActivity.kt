@@ -69,6 +69,11 @@ class MainActivity : FlutterActivity() {
                     result.success(d.path)
                 }
                 // whether the phone has any network but the VPN with the internet on it
+                // a country's name in English by its two letters ("SE" -> "Sweden")
+                "countryName" -> {
+                    val code = call.argument<String>("code") ?: ""
+                    result.success(java.util.Locale("", code).getDisplayCountry(java.util.Locale.ENGLISH))
+                }
                 "online" -> {
                     val cm = getSystemService(android.net.ConnectivityManager::class.java)
                     @Suppress("DEPRECATION")

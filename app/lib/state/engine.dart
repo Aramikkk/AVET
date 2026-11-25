@@ -1464,7 +1464,23 @@ class Engine extends Notifier<EngineState> {
   }
 
   /// Asks a service where the traffic leaves from (it goes through the VPN like everything else).
+  /// countries' names in English by their two letters, as the system gave them
+  static final englishCountries = <String, String>{};
+
   bool _ipBusy = false;
+  int _ipRetries = 0;
+
+  /// The country of the server in use, as two letters ("SE"), from its flag; null when it is not known.
+  String? _serverCountry() {
+    final tag = state.current;
+    if (tag == null) return null;
+    final flag = ServerName.of(tag).flag;
+    if (flag == null) return null;
+    final r = flag.runes.toList();
+    if (r.length != 2) return null;
+    return String.fromCharCodes([r[0] - 0x1F1E6 + 65, r[1] - 0x1F1E6 + 65]);
+  }
+
   DateTime _ipTried = DateTime.fromMillisecondsSinceEpoch(0);
 
   /// The exit's address and country, asked of a few services in turn (one that does not answer is not the end of it);
@@ -1496,6 +1512,35 @@ class Engine extends Notifier<EngineState> {
           final country = '${j['country'] ?? j['country_code'] ?? ''}';
           final ip = '${j['ip'] ?? ''}';
           if (country.isEmpty || ip.isEmpty) continue;
+          // the answer must come from the server's own country: one asked while the tunnel was not carrying the app's
+          // traffic yet (the first seconds of a start or of a move to another network) came from the phone's own
+          // address (Russia) and stayed on the screen for good. Such an answer is not shown and the address is asked
+          // again a little later (a few times; then what came is shown after all)
+          final expected = _serverCountry();
+          if (expected != null &&
+              country.toUpperCase() != expected &&
+              _ipRetries < 6) {
+            _ipRetries++;
+            _ipTimer?.cancel();
+            _ipTimer = Timer(
+              const Duration(seconds: 8),
+              () => unawaited(checkIp()),
+            );
+            return;
+          }
+          _ipRetries = 0;
+          // the country's name in English, for the line on the home screen (asked of the system once per country)
+          final code = country.toUpperCase();
+          if (!englishCountries.containsKey(code)) {
+            try {
+              final n = await _vpn.invokeMethod<String>('countryName', {
+                'code': code,
+              });
+              if (n != null && n.isNotEmpty && n != code) {
+                englishCountries[code] = n;
+              }
+            } catch (_) {}
+          }
           if (state.on) state = state.copyWith(exitIp: '$country · $ip');
           return;
         } catch (_) {

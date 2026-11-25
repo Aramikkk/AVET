@@ -1353,13 +1353,16 @@ class Sheen extends CustomPainter {
   /// What the block of [kind] should show now: a colour, or null (nothing: no rim at all).
   static Color? _wanted(SheenKind kind) {
     final now = DateTime.now();
+    // the phone moved to another network: for that moment only its colour is shown, on the ping's block (a slow ping
+    // or a new country, which often come with the move, wait until it has gone)
+    if (now.difference(netAt) < _flash) {
+      return kind == SheenKind.ping
+          ? (netMobile ? const Color(0xFF8FD8FF) : const Color(0xFF2F7BFF))
+          : null;
+    }
     switch (kind) {
       case SheenKind.ping:
-        if (alarm) return Palette.alert;
-        if (now.difference(netAt) < _flash) {
-          return netMobile ? const Color(0xFF8FD8FF) : const Color(0xFF2F7BFF);
-        }
-        return null;
+        return alarm ? Palette.alert : null;
       case SheenKind.multi:
         return multiAlarm ? Palette.alert : null;
       case SheenKind.server:

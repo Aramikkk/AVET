@@ -256,14 +256,60 @@ class _TileView extends StatelessWidget {
                   box.maxWidth &&
               needHeight <= box.maxHeight;
           if (!fits) {
-            return Center(
-              child: g == null
-                  ? Text(
-                      '+${tile.more}',
-                      style: mono(context, 13, weight: FontWeight.w800),
-                    )
-                  : AppIcon(g.key, size: (side * .5).clamp(16.0, 48.0)),
-            );
+            final tall = box.maxHeight > box.maxWidth * 1.5;
+            final small = math.min(box.maxWidth, box.maxHeight);
+            final icon = g == null
+                ? Text(
+                    '+${tile.more}',
+                    style: mono(context, 13, weight: FontWeight.w800),
+                  )
+                : AppIcon(g.key, size: (small * .42).clamp(16.0, 40.0));
+            // a tall narrow tile: the icon at the top, the name and the amount along it, reading downwards
+            if (tall && g != null && box.maxWidth >= 44) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  icon,
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: RotatedBox(
+                      quarterTurns: 1,
+                      child: Align(
+                        alignment: Alignment.topLeft,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.topLeft,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(name, maxLines: 1, style: nameStyle),
+                              Text.rich(
+                                TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: parts.first,
+                                      style: amountStyle,
+                                    ),
+                                    TextSpan(
+                                      text: ' ${parts.last}',
+                                      style: unitStyle,
+                                    ),
+                                  ],
+                                ),
+                                maxLines: 1,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+            // a small tile: the icon alone, in its top left corner as in the others
+            return Align(alignment: Alignment.topLeft, child: icon);
           }
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
