@@ -9,6 +9,41 @@ abstract final class ConfigBuilder {
 
   static const directTag = 'direct';
 
+  /// Server types that run over TCP: their port is checked with a plain TCP connection before the full test.
+  static const _tcpTypes = {
+    'vless',
+    'vmess',
+    'trojan',
+    'shadowsocks',
+    'anytls',
+    'socks',
+    'http',
+    'naive',
+    'shadowtls',
+  };
+
+  /// Gives every Auto group the addresses of the TCP-based servers (a core of ours, `tcp_ping`): a server whose port
+  /// does not take a TCP connection is marked unreachable at once, without the full test through it. Servers behind
+  /// another one (`detour`) and UDP ones (Hysteria, TUIC, WireGuard) are left to the full test.
+  static void addTcpPing(Map<String, Object?> config) {
+    final outbounds = config['outbounds'];
+    if (outbounds is! List) return;
+    final targets = <String, String>{};
+    for (final o in outbounds) {
+      if (o is! Map || !_tcpTypes.contains(o['type'])) continue;
+      if ((o['detour'] ?? '').toString().isNotEmpty) continue;
+      final server = '${o['server'] ?? ''}';
+      final port = o['server_port'];
+      if (server.isEmpty || port is! int || port <= 0) continue;
+      final host = server.contains(':') ? '[$server]' : server;
+      targets['${o['tag']}'] = '$host:$port';
+    }
+    if (targets.isEmpty) return;
+    for (final o in outbounds) {
+      if (o is Map && o['type'] == 'urltest') o['tcp_ping'] = targets;
+    }
+  }
+
   /// What the latency of every server is measured on.
   static const testUrl = 'https://www.gstatic.com/generate_204';
 
@@ -136,6 +171,8 @@ abstract final class ConfigBuilder {
         ],
         'final': 'remote',
         'strategy': 'ipv4_only',
+        // an expired answer is given at once and refreshed in the background: sites opened often do not wait for DNS
+        'optimistic': true,
       },
       'inbounds': [
         if (systemProxy)

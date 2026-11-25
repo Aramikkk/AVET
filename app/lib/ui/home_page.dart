@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:avet/update/update.dart';
 import 'package:avet/data/server_name.dart';
 import 'package:avet/data/sub_name.dart';
 import 'package:avet/ui/add_subscription.dart';
@@ -124,14 +125,18 @@ class HomeHeader extends ConsumerWidget {
                 width: 54,
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 4),
-                  child: Text(
-                    '2.0',
-                    maxLines: 1,
-                    style: mono(
-                      context,
-                      11,
-                      colour: Palette.soft(isDark(context)),
-                      spacing: .8,
+                  // the installed version ("2.0.5"), read from the system at the start
+                  child: ValueListenableBuilder<String>(
+                    valueListenable: Updates.versionName,
+                    builder: (context, v, _) => Text(
+                      v.isEmpty ? '2.0' : v,
+                      maxLines: 1,
+                      style: mono(
+                        context,
+                        11,
+                        colour: Palette.soft(isDark(context)),
+                        spacing: .8,
+                      ),
                     ),
                   ),
                 ),

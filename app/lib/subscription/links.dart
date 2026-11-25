@@ -4,6 +4,7 @@ import 'package:avet/subscription/xhttp.dart';
 
 import 'package:avet/subscription/clash.dart';
 import 'package:avet/subscription/json_config.dart';
+import 'package:avet/subscription/tls_extras.dart';
 
 /// Server links of a subscription turned into sing-box outbounds.
 ///
@@ -51,7 +52,8 @@ abstract final class Links {
         'vmess' => _vmess(link.substring('vmess://'.length)),
         'trojan' => _trojan(Uri.parse(link)),
         'ss' => _shadowsocks(link),
-        'hysteria2' || 'hy2' => _hysteria2(Uri.parse(link)),
+        'hysteria2' ||
+        'hy2' => _hysteria2(Uri.parse(TlsExtras.movePortList(link))),
         'hysteria' || 'hy' => _hysteria(Uri.parse(link)),
         'tuic' => _tuic(Uri.parse(link)),
         'anytls' => _anytls(Uri.parse(link)),
@@ -188,6 +190,11 @@ abstract final class Links {
       'tag': _name(uri),
       'server': uri.host,
       'server_port': _port(uri, fallback: 443),
+      ...TlsExtras.hopping(
+        q['mport'] ?? q['ports'],
+        _port(uri, fallback: 443),
+        q['hop_interval'] ?? q['hopInterval'] ?? q['hop-interval'],
+      ),
       'password': Uri.decodeComponent(uri.userInfo),
       if (obfs.isNotEmpty)
         'obfs': {'type': obfs, 'password': q['obfs-password'] ?? ''},
@@ -196,6 +203,7 @@ abstract final class Links {
         'server_name': (q['sni'] ?? '').isEmpty ? uri.host : q['sni'],
         if (_isTrue(q['insecure'])) 'insecure': true,
         if ((q['alpn'] ?? '').isNotEmpty) 'alpn': q['alpn']!.split(','),
+        ...TlsExtras.ofQuery(q),
       },
     };
   }
@@ -215,6 +223,7 @@ abstract final class Links {
           _isTrue(q['allowInsecure']))
         'insecure': true,
       if (alpn.isNotEmpty) 'alpn': alpn.split(','),
+      ...TlsExtras.ofQuery(q),
     };
   }
 
@@ -327,7 +336,9 @@ abstract final class Links {
             'enabled': true,
             'public_key': q['pbk'] ?? '',
             'short_id': q['sid'] ?? '',
-          },
+          }
+        else
+          ...TlsExtras.ofQuery(q),
       },
     };
   }

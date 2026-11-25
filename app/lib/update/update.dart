@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 /// What the newest release says about its build (its `latest.json`).
@@ -81,12 +82,17 @@ abstract class Updates {
   /// The installed build as last read (read once at the start: the About page has it when it is built).
   static InstalledVersion? last;
 
+  /// The installed version's name ("2.0.5"), for the screens that show it; empty until it is read.
+  static final versionName = ValueNotifier<String>('');
+
   static Future<InstalledVersion> installed() async {
     final m = await _channel.invokeMapMethod<String, dynamic>('version');
-    return last = InstalledVersion(
+    last = InstalledVersion(
       (m?['name'] as String?) ?? '',
       (m?['code'] as num?)?.toInt() ?? 0,
     );
+    versionName.value = last!.name;
+    return last!;
   }
 
   /// The look the app takes by itself once a day: the newest build when it is newer than the installed one, otherwise

@@ -1983,6 +1983,10 @@ class Engine extends Notifier<EngineState> {
     return true;
   }
 
+  /// Subscriptions that did not load while the VPN was off (the provider's address may be blocked on this network):
+  /// loaded again through the tunnel once it is up.
+  final Set<String> _retryThroughTunnel = {};
+
   /// Loads the subscription from [url] and keeps it.
   Future<void> updateSubscription(String url, {bool notify = true}) async {
     url = url.trim();
@@ -2015,6 +2019,7 @@ class Engine extends Notifier<EngineState> {
         deviceId: idFile.readAsStringSync().trim(),
       );
       _logSubscription();
+      _retryThroughTunnel.remove(url);
       final subs = [...state.subs];
       final at = subs.indexWhere((x) => x.url == url);
       final info = SubInfo(
@@ -2052,8 +2057,21 @@ class Engine extends Notifier<EngineState> {
         );
       }
     } catch (e) {
-      state = state.copyWith(note: 'Не загрузилась: $e');
-      if (notify) toast('Не удалось обновить подписку');
+      // without the VPN the address may be blocked: the app's own requests go through the tunnel once it is up
+      final later = !state.on && state.servers.isNotEmpty;
+      if (later) _retryThroughTunnel.add(url);
+      state = state.copyWith(
+        note: later
+            ? 'Не загрузилась напрямую — повторю через VPN после подключения'
+            : 'Не загрузилась: $e',
+      );
+      if (notify) {
+        toast(
+          later
+              ? 'Не загрузилась напрямую — повторю через VPN после подключения'
+              : 'Не удалось обновить подписку',
+        );
+      }
     } finally {
       state = state.copyWith(
         updating: {...state.updating}..remove(url),
@@ -2497,6 +2515,7 @@ class Engine extends Notifier<EngineState> {
       }
     }
     applyNetOptions(built, rules);
+    ConfigBuilder.addTcpPing(built);
     if (rules.fragment) {
       for (final o in built['outbounds']! as List) {
         final tls = (o as Map)['tls'];
@@ -2558,6 +2577,18 @@ class Engine extends Notifier<EngineState> {
     _startLive();
     _saveSession();
     unawaited(testAll());
+    unawaited(_retryFailedSubscriptions());
+  }
+
+  /// The subscriptions that did not load without the VPN, loaded again through the tunnel just after it comes up.
+  Future<void> _retryFailedSubscriptions() async {
+    if (_retryThroughTunnel.isEmpty) return;
+    await Future<void>.delayed(const Duration(seconds: 3));
+    for (final url in [..._retryThroughTunnel]) {
+      if (!state.on) return;
+      diag('subscription: retry through the tunnel');
+      await updateSubscription(url, notify: false);
+    }
   }
 
   String? _sessionSecret;

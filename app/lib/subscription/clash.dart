@@ -1,3 +1,4 @@
+import 'package:avet/subscription/tls_extras.dart';
 import 'package:avet/subscription/xhttp.dart';
 import 'package:yaml/yaml.dart';
 
@@ -74,6 +75,11 @@ abstract final class Clash {
         return {
           'type': 'hysteria2',
           ...base,
+          ...TlsExtras.hopping(
+            s('ports'),
+            base['server_port'] as int? ?? 443,
+            s('hop-interval'),
+          ),
           'password': s('password') ?? s('auth'),
           if (obfs.isNotEmpty)
             'obfs': {'type': obfs, 'password': s('obfs-password') ?? ''},
@@ -152,7 +158,12 @@ abstract final class Clash {
             'enabled': true,
             'public_key': reality['public-key']?.toString() ?? '',
             'short_id': reality['short-id']?.toString() ?? '',
-          },
+          }
+        else
+          'ech': ?TlsExtras.echFromClash(p['ech-opts']),
+        if (TlsExtras.pins(p['fingerprint']?.toString()) case final pins
+            when pins.isNotEmpty)
+          'certificate_public_key_sha256': pins,
       },
     };
   }

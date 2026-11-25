@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
 
+import 'package:avet/update/update.dart';
 import 'package:avet/config/networks.dart';
 import 'package:avet/data/dns_servers.dart';
 import 'package:avet/data/server_name.dart';
@@ -2550,9 +2551,12 @@ class _About extends StatelessWidget {
               children: [
                 Text('AVET', style: mono(context, 22, weight: FontWeight.w800)),
                 const SizedBox(height: 4),
-                Text(
-                  'Версия 2.0',
-                  style: mono(context, 13, weight: FontWeight.w700),
+                ValueListenableBuilder<String>(
+                  valueListenable: Updates.versionName,
+                  builder: (context, v, _) => Text(
+                    'Версия ${v.isEmpty ? '2.0' : v}',
+                    style: mono(context, 13, weight: FontWeight.w700),
+                  ),
                 ),
                 Text('Ядро: sing-box', style: desc(context, 11.5)),
                 Text('by aramikkk', style: desc(context, 11.5)),
@@ -2575,10 +2579,22 @@ class _About extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         entry(
+          '2.0.5',
+          '25.11',
+          'Перескок портов Hysteria2, ECH и проверка сертификата по SHA-256 из ссылок, повтор загрузки подписки через VPN, быстрая TCP-проверка серверов перед тестом.',
+          true,
+        ),
+        entry(
+          '2.0.1–2.0.4',
+          '24–25.11',
+          'Обновление из приложения с GitHub и проверка раз в сутки, иконка в цвет акцента, яркие и неоновые цвета, объём Liquid во всех стилях, плавная смена вкладок и страниц.',
+          false,
+        ),
+        entry(
           '2.0',
           '17.11',
           'Первая стабильная версия, заменяет старое приложение. Всё из него перенесено, добавлено своё: умный автовыбор и спящие серверы, несколько подписок, Суперлайт, мульти серверы для Wi-Fi и LTE, IPv6, мультиплексирование, резервная копия настроек.',
-          true,
+          false,
         ),
         entry(
           '1.0 beta',

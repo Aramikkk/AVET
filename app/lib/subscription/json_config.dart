@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:avet/subscription/tls_extras.dart';
 import 'package:avet/subscription/xhttp.dart';
 
 /// A subscription that is a JSON config: a sing-box one (`outbounds` with `type`), an Xray / V2Ray one (`outbounds` with
@@ -195,6 +196,13 @@ abstract final class JsonConfig {
           if (alpn is List && alpn.isNotEmpty)
             'alpn': [for (final a in alpn) '$a'],
           if (fp.isNotEmpty) 'utls': {'enabled': true, 'fingerprint': fp},
+          ...TlsExtras.ofQuery({
+            if (t['echConfigList'] != null) 'ech': '${t['echConfigList']}',
+            if (t['pinnedPeerCertSha256'] != null)
+              'pcs': t['pinnedPeerCertSha256'] is List
+                  ? (t['pinnedPeerCertSha256'] as List).join(',')
+                  : '${t['pinnedPeerCertSha256']}',
+          }),
         },
       };
     }

@@ -24,4 +24,6 @@ cp smart/urltest_smart_test.go patched/sing-box/protocol/group/urltest_smart_tes
 python smart/apply.py
 python xhttp/apply.py
 python timeout/apply.py
+python pin/apply.py
+python tcpping/apply.py
 echo patched
