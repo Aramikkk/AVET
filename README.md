@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><img alt="Версия" src="https://img.shields.io/github/v/release/Aramikkk/AVET?label=%D0%B2%D0%B5%D1%80%D1%81%D0%B8%D1%8F&color=a31a3c"></a>
+  <a href="../../releases/latest"><img alt="Версия" src="https://img.shields.io/github/v/release/Aramikkk/AVET?label=%D0%B2%D0%B5%D1%80%D1%81%D0%B8%D1%8F&color=2ea44f"></a>
   <img alt="Android 7.0+" src="https://img.shields.io/badge/Android-7.0%2B-3ddc84">
   <img alt="Архитектура" src="https://img.shields.io/badge/arm64-v8a-555">
   <a href="LICENSE"><img alt="Лицензия GPL-3.0" src="https://img.shields.io/badge/%D0%BB%D0%B8%D1%86%D0%B5%D0%BD%D0%B7%D0%B8%D1%8F-GPL--3.0-blue"></a>
