@@ -841,10 +841,10 @@ class _FlowPainter extends CustomPainter {
         text: TextSpan(
           text: s,
           style: TextStyle(
-            fontFamily: 'JetBrains Mono',
-            fontSize: size,
+            fontFamily: Palette.textFonts[Palette.textFont].$1,
+            fontSize: size * Palette.textFonts[Palette.textFont].$3,
             color: colour ?? ink,
-            fontWeight: FontWeight.w500,
+            fontWeight: weighedText(FontWeight.w500),
           ),
         ),
         textDirection: TextDirection.ltr,

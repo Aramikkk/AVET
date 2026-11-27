@@ -1,7 +1,7 @@
 name: avet
 description: "A new Flutter project."
 publish_to: 'none'
-version: 2.0.7+20228
+version: 2.0.8+20251
 
 environment:
   sdk: ^3.10.4
@@ -32,6 +32,36 @@ flutter:
           weight: 700
         - asset: assets/fonts/JetBrainsMono-800.ttf
           weight: 800
+    - family: IBM Plex Mono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-500.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexMono-700.ttf
+          weight: 700
+    - family: Roboto Mono
+      fonts:
+        - asset: assets/fonts/RobotoMono-500.ttf
+          weight: 500
+        - asset: assets/fonts/RobotoMono-700.ttf
+          weight: 700
+    - family: Fira Code
+      fonts:
+        - asset: assets/fonts/FiraCode-500.ttf
+          weight: 500
+        - asset: assets/fonts/FiraCode-700.ttf
+          weight: 700
+    - family: Source Code Pro
+      fonts:
+        - asset: assets/fonts/SourceCodePro-500.ttf
+          weight: 500
+        - asset: assets/fonts/SourceCodePro-700.ttf
+          weight: 700
+    - family: Ubuntu Mono
+      fonts:
+        - asset: assets/fonts/UbuntuMono-400.ttf
+          weight: 500
+        - asset: assets/fonts/UbuntuMono-700.ttf
+          weight: 700
     - family: Unbounded
       fonts:
         - asset: assets/fonts/Unbounded-600.ttf
@@ -40,6 +70,8 @@ flutter:
           weight: 800
     - family: Golos Text
       fonts:
+        - asset: assets/fonts/GolosText-400.ttf
+          weight: 400
         - asset: assets/fonts/GolosText-500.ttf
           weight: 500
         - asset: assets/fonts/GolosText-700.ttf

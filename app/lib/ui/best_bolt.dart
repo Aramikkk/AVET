@@ -4,7 +4,8 @@ import 'package:avet/ui/signs.dart';
 import 'package:avet/ui/widgets.dart';
 import 'package:flutter/material.dart';
 
-/// The bolt of the best-server button: while the servers are measured its dots light from the bottom up, round and round.
+/// The bolt of the best-server button: while the servers are measured a streak of current runs up it, round and round;
+/// when they are done it strikes (lights up, swells a little, calms down).
 class BestBolt extends StatefulWidget {
   const BestBolt({super.key, required this.colour});
 
@@ -14,20 +15,27 @@ class BestBolt extends StatefulWidget {
   State<BestBolt> createState() => _BestBoltState();
 }
 
-class _BestBoltState extends State<BestBolt>
-    with SingleTickerProviderStateMixin {
+class _BestBoltState extends State<BestBolt> with TickerProviderStateMixin {
   late final AnimationController _charge = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1300),
+    duration: const Duration(milliseconds: 1100),
+  );
+
+  /// the strike when the measuring is over (1 to 0)
+  late final AnimationController _flash = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 650),
   );
 
   void _sync() {
     if (Engine.bestRunning.value) {
       if (!_charge.isAnimating) _charge.repeat();
     } else {
+      final was = _charge.isAnimating;
       _charge
         ..stop()
         ..value = 0;
+      if (was && essentialMotionNow) _flash.reverse(from: 1);
     }
   }
 
@@ -42,6 +50,7 @@ class _BestBoltState extends State<BestBolt>
   void dispose() {
     Engine.bestRunning.removeListener(_sync);
     _charge.dispose();
+    _flash.dispose();
     super.dispose();
   }
 
@@ -53,8 +62,9 @@ class _BestBoltState extends State<BestBolt>
         man: false,
         colour: widget.colour,
         charge: Palette.red,
-        progress: running && !reduceMotionNow ? () => _charge.value : null,
-        repaint: _charge,
+        progress: running && essentialMotionNow ? () => _charge.value : null,
+        flash: () => _flash.value,
+        repaint: Listenable.merge([_charge, _flash]),
       ),
     );
   }

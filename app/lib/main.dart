@@ -22,7 +22,15 @@ void main() {
   // what goes wrong is written to the diagnostic log (the first lines of the error, no more)
   final previous = FlutterError.onError;
   FlutterError.onError = (details) {
-    diag('error: ${details.exceptionAsString().split('\n').first}');
+    // with the first places of the app's own code it came through, so it can be found
+    final where = (details.stack?.toString().split('\n') ?? const <String>[])
+        .where((l) => l.contains('package:avet/'))
+        .take(3)
+        .map((l) => l.replaceFirst(RegExp(r'^#\d+\s+'), '').trim())
+        .join(' < ');
+    diag(
+      'error: ${details.exceptionAsString().split('\n').first}${where.isEmpty ? '' : ' @ $where'}',
+    );
     previous?.call(details);
   };
   PlatformDispatcher.instance.onError = (error, stack) {
@@ -81,7 +89,8 @@ void main() {
 }
 
 /// What 100% of the font setting is: the text as it was at 85%, which suits the screens better.
-const _baseText = .85;
+// (100% is what 105% was before: the text a step larger for all)
+const _baseText = .85 * 1.05;
 
 class AvetApp extends ConsumerWidget {
   const AvetApp({super.key});
@@ -98,7 +107,7 @@ class AvetApp extends ConsumerWidget {
           for (final p in TargetPlatform.values) p: const _PlainTransition(),
         },
       ),
-      fontFamily: 'Golos Text',
+      fontFamily: Palette.textFonts[Palette.textFont].$1,
       scaffoldBackgroundColor: Palette.paper(dark),
       dialogTheme: DialogThemeData(
         backgroundColor: Palette.plate(dark),
@@ -109,13 +118,13 @@ class AvetApp extends ConsumerWidget {
           side: BorderSide(color: Palette.ink(dark).withValues(alpha: .28)),
         ),
         titleTextStyle: TextStyle(
-          fontFamily: 'JetBrains Mono',
+          fontFamily: Palette.textFonts[Palette.textFont].$1,
           fontWeight: FontWeight.w800,
           fontSize: 18,
           color: Palette.ink(dark),
         ),
         contentTextStyle: TextStyle(
-          fontFamily: 'JetBrains Mono',
+          fontFamily: Palette.textFonts[Palette.textFont].$1,
           fontSize: 13,
           color: Palette.ink(dark),
         ),
@@ -131,7 +140,7 @@ class AvetApp extends ConsumerWidget {
       snackBarTheme: SnackBarThemeData(
         backgroundColor: Palette.ink(dark),
         contentTextStyle: TextStyle(
-          fontFamily: 'JetBrains Mono',
+          fontFamily: Palette.textFonts[Palette.textFont].$1,
           fontSize: 12.5,
           color: Palette.paper(dark),
         ),
@@ -141,8 +150,8 @@ class AvetApp extends ConsumerWidget {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: Palette.ink(dark),
-          textStyle: const TextStyle(
-            fontFamily: 'JetBrains Mono',
+          textStyle: TextStyle(
+            fontFamily: Palette.textFonts[Palette.textFont].$1,
             fontWeight: FontWeight.w800,
             fontSize: 13,
           ),
@@ -208,9 +217,9 @@ class AvetApp extends ConsumerWidget {
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
-          textStyle: const WidgetStatePropertyAll(
+          textStyle: WidgetStatePropertyAll(
             TextStyle(
-              fontFamily: 'JetBrains Mono',
+              fontFamily: Palette.textFonts[Palette.textFont].$1,
               fontWeight: FontWeight.w700,
               fontSize: 12.5,
             ),
@@ -237,6 +246,9 @@ class AvetApp extends ConsumerWidget {
           e.rules.style,
           e.rules.depth,
           e.rules.bg,
+          e.rules.lightLook || e.rules.superLight,
+          e.rules.textWeight,
+          e.rules.textFont,
         ),
       ),
     );
@@ -245,8 +257,11 @@ class AvetApp extends ConsumerWidget {
     final nightNow = night && (hour >= 23 || hour < 7);
     Palette.tone = look.$3;
     Palette.style = look.$6;
-    Palette.depth = look.$7;
+    // (the light look: flat blocks, no glass)
+    Palette.depth = look.$9 ? 0 : look.$7;
     Palette.bg = look.$8;
+    Palette.textWeight = look.$10;
+    Palette.textFont = look.$11;
     digitStyleNow =
         DigitStyle.values[look.$4.clamp(0, DigitStyle.values.length - 1)];
     return MaterialApp(

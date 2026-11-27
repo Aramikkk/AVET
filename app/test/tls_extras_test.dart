@@ -15,7 +15,9 @@ void main() {
     });
 
     test('ports in the address', () {
-      final o = Links.parse('hy2://pw@example.com:443,20000-30000?sni=a.com#x')!;
+      final o = Links.parse(
+        'hy2://pw@example.com:443,20000-30000?sni=a.com#x',
+      )!;
       expect(o['server'], 'example.com');
       expect(o['server_port'], 443);
       expect(o['server_ports'], ['443:443', '20000:30000']);
@@ -91,12 +93,16 @@ proxies:
       query-server-name: cover.example
 ''';
       final tls = Links.parseSubscription(yaml).single['tls']! as Map;
-      expect(tls['ech'], {'enabled': true, 'query_server_name': 'cover.example'});
+      expect(tls['ech'], {
+        'enabled': true,
+        'query_server_name': 'cover.example',
+      });
     });
   });
 
   group('certificate pinning', () {
-    const hex = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+    const hex =
+        'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
     const b64 = '47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=';
 
     test('pcs hex to base64', () {
@@ -119,7 +125,8 @@ proxies:
     });
 
     test('Clash fingerprint', () {
-      const yaml = '''
+      const yaml =
+          '''
 proxies:
   - name: t
     type: trojan

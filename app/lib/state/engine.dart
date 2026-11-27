@@ -57,7 +57,7 @@ class RuleSettings {
     this.global = false,
     this.sharing = false,
     this.superLight = false,
-    this.tintIcon = false,
+    this.tintIcon = true,
     this.theme = 0,
     this.slowMs = 400,
     this.slowMsLte = 500,
@@ -82,7 +82,7 @@ class RuleSettings {
     this.hiddenLte = const ['RU', 'KZ'],
     this.pinned = const [],
     this.boot = true,
-    this.accent = 4,
+    this.accent = 0,
     this.paperTone = 2,
     this.dns = 6,
     this.stack = 'mixed',
@@ -99,7 +99,7 @@ class RuleSettings {
     this.sleepCount = 15,
     this.sleepCountLte = 10,
     this.depth = 3,
-    this.bg = 6,
+    this.bg = 2,
     this.looks = const {
       1: [1, 15, 5],
       2: [0, 11, 2],
@@ -119,6 +119,8 @@ class RuleSettings {
     this.customApps = const [],
     this.userSites = const [],
     this.siteGroupsLte = true,
+    this.sitesSeen = false,
+    this.fewPolls = false,
     this.strategyLte = 3,
     this.pingOnOpen = true,
     this.homeSites = const [
@@ -142,6 +144,8 @@ class RuleSettings {
     this.byNetwork = true,
     this.digits = 0,
     this.fontScale = 1.0,
+    this.textWeight = 1,
+    this.textFont = 7,
     this.style = 0,
     this.pingHttp = true,
     this.groupsOff = const [],
@@ -288,9 +292,9 @@ class RuleSettings {
   /// Where each look begins: volume (0 flat, 1 relief, 3 Liquid; 2 was glass and is gone), accent (a place in Palette.accents:
   /// burgundy, icy, lime) and the sheet (Backdrops: 3 sunset, 5 mosaic, 2 the theme's own). Every look begins with Liquid.
   static const presets = <int, List<int>>{
-    0: [3, 4, 6],
-    1: [3, 15, 6],
-    2: [3, 11, 6],
+    0: [3, 0, 2],
+    1: [3, 15, 2],
+    2: [3, 11, 2],
   };
 
   /// These settings with the look [to] in use: what the look in use has is put away, and the look [to] has what it had, or
@@ -365,6 +369,16 @@ class RuleSettings {
   /// the multi-server mode on mobile data (its own switch; [siteGroups] is Wi-Fi's)
   final bool siteGroupsLte;
 
+  /// the multi-server mode has been on once (on either network): it is set up, only switched off now
+  final bool sitesSeen;
+
+  /// fewer polls (the simple mode's second switch): the core, the ping, the connections and the multi-servers are
+  /// asked half as often or less, the servers are checked twice as rarely
+  final bool fewPolls;
+
+  /// the polls are rare: [fewPolls] or Superlight
+  bool get rarePolls => fewPolls || superLight;
+
   /// the same for mobile data (its network is less steady: checks come often and a better server is taken soon)
   final int strategyLte;
 
@@ -400,6 +414,12 @@ class RuleSettings {
   /// how the figures are drawn (an index of DigitStyle) and the scale of the text
   final int digits;
   final double fontScale;
+
+  /// how heavy the text of the home screen and the tabs is: 0 thinner, 1 as made, 2 heavier
+  final int textWeight;
+
+  /// the face of the text of the home screen and the tabs (a place in [Palette.textFonts]; 7 Golos Text, the default)
+  final int textFont;
 
   /// the look of the home screen and the panel: 0 Dot Matrix, 1 Mosaic
   final int style;
@@ -481,6 +501,8 @@ class RuleSettings {
     List<String>? customApps,
     List<Map<String, Object?>>? userSites,
     bool? siteGroupsLte,
+    bool? sitesSeen,
+    bool? fewPolls,
     int? strategyLte,
     bool? pingOnOpen,
     List<String>? homeSites,
@@ -497,6 +519,8 @@ class RuleSettings {
     bool? byNetwork,
     int? digits,
     double? fontScale,
+    int? textWeight,
+    int? textFont,
     int? style,
     bool? pingHttp,
     List<String>? groupsOff,
@@ -571,6 +595,12 @@ class RuleSettings {
     customApps: customApps ?? this.customApps,
     userSites: userSites ?? this.userSites,
     siteGroupsLte: siteGroupsLte ?? this.siteGroupsLte,
+    fewPolls: fewPolls ?? this.fewPolls,
+    sitesSeen:
+        sitesSeen ??
+        (this.sitesSeen ||
+            (siteGroups ?? this.siteGroups) ||
+            (siteGroupsLte ?? this.siteGroupsLte)),
     strategyLte: strategyLte ?? this.strategyLte,
     pingOnOpen: pingOnOpen ?? this.pingOnOpen,
     homeSites: homeSites ?? this.homeSites,
@@ -587,6 +617,8 @@ class RuleSettings {
     byNetwork: byNetwork ?? this.byNetwork,
     digits: digits ?? this.digits,
     fontScale: fontScale ?? this.fontScale,
+    textWeight: textWeight ?? this.textWeight,
+    textFont: textFont ?? this.textFont,
     style: style ?? this.style,
     pingHttp: pingHttp ?? this.pingHttp,
     groupsOff: groupsOff ?? this.groupsOff,
@@ -611,6 +643,7 @@ class RuleSettings {
     aiMobile: aiLte,
     sleepWifi: strategy == 3 && sleepWifi,
     sleepLte: strategyLte == 3 && sleepLte,
+    rarePolls: rarePolls,
   );
 
   Map<String, Object?> toJson() => {
@@ -687,6 +720,8 @@ class RuleSettings {
     'customApps': customApps,
     'userSites': userSites,
     'sitesLte': siteGroupsLte,
+    'sitesSeen': sitesSeen || siteGroups || siteGroupsLte,
+    'fewPolls': fewPolls,
     'strategyLte': strategyLte,
     'pingOnOpen': pingOnOpen,
     'homeSites': homeSites,
@@ -702,7 +737,9 @@ class RuleSettings {
     'ipCheck': ipCheck,
     'byNetwork': byNetwork,
     'digits': digits,
-    'fontScaleV2': fontScale,
+    'fontScaleV3': fontScale,
+    'textWeightV2': textWeight,
+    'textFont': textFont,
     'style': style,
     'pingHttp': pingHttp,
     'groupsOff': groupsOff,
@@ -726,7 +763,7 @@ class RuleSettings {
     global: r['global'] == true,
     sharing: r['sharing'] == true,
     superLight: r['superLight'] == true,
-    tintIcon: r['tintIcon'] == true,
+    tintIcon: r['tintIcon'] != false,
     theme: r['theme'] as int? ?? 0,
     slowMs: r['slowMs'] as int? ?? 250,
     slowMsLte: r['slowMsLte'] as int? ?? 500,
@@ -835,7 +872,7 @@ class RuleSettings {
     habit: (r['habit'] as int? ?? 2).clamp(0, 3),
     bg: () {
       // (nothing stored: the theme's own sheet)
-      if (r['bg'] == null) return 6;
+      if (r['bg'] == null) return 2;
       final v = r['bg'] as int? ?? 0;
       final ver = r['bgV'] as int? ?? 1;
       if (ver >= 5) return v.clamp(0, 6);
@@ -885,6 +922,9 @@ class RuleSettings {
     siteGroupsLte: r.containsKey('sitesLte')
         ? r['sitesLte'] == true
         : r['sites'] == true,
+    fewPolls: r['fewPolls'] == true,
+    sitesSeen:
+        r['sitesSeen'] == true || r['sites'] == true || r['sitesLte'] == true,
     strategyLte: (r['strategyLte'] as int? ?? 1).clamp(0, 3),
     pingOnOpen: r['pingOnOpen'] == true,
     homeSites: r['homeSites'] is List
@@ -914,14 +954,27 @@ class RuleSettings {
     ipCheck: r['ipCheck'] == true,
     byNetwork: r['byNetwork'] != false,
     digits: r['digits'] as int? ?? 0,
+    // (the weights moved a step: what was "thinner" is "as made" now, the old "as made" is "heavier")
+    textWeight: r['textWeightV2'] is int
+        ? (r['textWeightV2'] as int).clamp(0, 2)
+        : (r['textWeight'] is int
+              ? ((r['textWeight'] as int) + 1).clamp(0, 2)
+              : 1),
+    textFont: (r['textFont'] as int? ?? 7).clamp(0, 7),
     // 100% is now what 85% used to be: a stored old value is moved to the same look (90% of before is 100% now)
-    fontScale: r['fontScaleV2'] is num
-        ? (r['fontScaleV2'] as num).toDouble()
-        : (r['fontScale'] is num
-              ? (((r['fontScale'] as num).toDouble() - .05) / .85 * 20)
-                        .round() /
-                    20
-              : 1.0),
+    // (and 100% is now what 105% was: a stored value is moved to the same look, 105% of before is 100% now)
+    fontScale: r['fontScaleV3'] is num
+        ? (r['fontScaleV3'] as num).toDouble()
+        : ((() {
+            final v2 = r['fontScaleV2'] is num
+                ? (r['fontScaleV2'] as num).toDouble()
+                : (r['fontScale'] is num
+                      ? (((r['fontScale'] as num).toDouble() - .05) / .85 * 20)
+                                .round() /
+                            20
+                      : 1.05);
+            return (v2 / 1.05 * 20).round() / 20;
+          })()).clamp(.8, 1.25),
     style: r['style'] as int? ?? 0,
     pingHttp: r['pingHttp'] != false,
     groupsOff: [for (final a in (r['groupsOff'] as List? ?? const [])) '$a'],
@@ -1820,12 +1873,12 @@ class Engine extends Notifier<EngineState> {
     var seconds =
         int.parse(base.substring(0, base.length - 1)) *
         (base.endsWith('m') ? 60 : 1);
-    // Superlight: the checks are twice as rare
-    if (r.superLight) seconds *= 2;
+    // Superlight, fewer polls: the checks are twice as rare
+    if (r.rarePolls) seconds *= 2;
     // Fewer hops: the servers are checked at the most every half an hour
     final few = r.fewHopsOf(lte);
     if (few && seconds < 1800) seconds = 1800;
-    if (!r.superLight && !few) return base;
+    if (!r.rarePolls && !few) return base;
     return seconds % 60 == 0 ? '${seconds ~/ 60}m' : '${seconds}s';
   }
 
@@ -2452,6 +2505,19 @@ class Engine extends Notifier<EngineState> {
       list: rules.routingList && !rules.global,
       blockedOnly: rules.blockedOnly && !rules.global,
     );
+    {
+      // the services the home screen asks where the traffic leaves from always go through the VPN: with "only the
+      // blocked through the VPN" they went direct, and the line showed the phone's own address (Russia)
+      final route = built['route']! as Map<String, Object?>;
+      final list = List<Object?>.of(route['rules']! as List);
+      final at = list.indexWhere((r) => (r as Map)['ip_is_private'] == true);
+      list.insert(at < 0 ? list.length : at, {
+        'domain': const ['api.country.is', 'ipinfo.io', 'ipwho.is'],
+        'action': 'route',
+        'outbound': ConfigBuilder.selectTag,
+      });
+      route['rules'] = list;
+    }
     if (rules.appMode != 0 && rules.apps.isNotEmpty) {
       // the user's apps: listed ones go direct (1), or only listed ones go through the VPN, the rest direct (2)
       final route = built['route']! as Map<String, Object?>;
@@ -2767,22 +2833,24 @@ class Engine extends Notifier<EngineState> {
       );
       return;
     }
-    // Superlight: everything is looked at half as often, and what only the other pages need is not looked at
+    // Superlight: everything is looked at half as often, and what only the other pages need is not looked at; fewer
+    // polls: half as often too, with everything still there
     final light = state.rules.superLight;
+    final rare = state.rules.rarePolls;
     _poll = Timer.periodic(
-      Duration(seconds: light ? 6 : 3),
+      Duration(seconds: rare ? 6 : 3),
       (_) => unawaited(_refresh()),
     );
     _probe = Timer.periodic(
-      Duration(seconds: light ? 6 : 3),
+      Duration(seconds: rare ? 6 : 3),
       (_) => unawaited(_probeOnce()),
     );
     _conn = Timer.periodic(
-      Duration(seconds: light ? 8 : 2),
+      Duration(seconds: rare ? 8 : 2),
       (_) => unawaited(_connections()),
     );
     if (!light) {
-      _sites = Timer.periodic(const Duration(seconds: 12), (_) {
+      _sites = Timer.periodic(Duration(seconds: rare ? 30 : 12), (_) {
         if (homeShown.value) unawaited(measureSites());
       });
       homeShown
@@ -2939,8 +3007,63 @@ class Engine extends Notifier<EngineState> {
       }
       _sitesAt = DateTime.now();
       if (state.on) state = state.copyWith(sites: out, sitesMeasured: true);
+      _retestSilent(out);
     } finally {
       _measuring = false;
+    }
+  }
+
+  /// when each service's servers were last made to be compared at once (not more often than every half minute)
+  final _retestedAt = <String, DateTime>{};
+
+  /// how many rounds in a row each service has been slow (red)
+  final _slowRounds = <String, int>{};
+
+  /// A service that did not answer through its own server, or has been slow (red) two rounds in a row (multi-server
+  /// mode): its group compares its servers now, not at its next check (up to two minutes away), and takes another one
+  /// if a better one answers.
+  void _retestSilent(Map<String, int?> out) {
+    final c = _control;
+    if (c == null || !state.on) return;
+    final lte = state.network == 'mobile';
+    final multi = lte ? state.rules.siteGroupsLte : state.rules.siteGroups;
+    final net = lte ? 'mobile' : 'wifi';
+    final now = DateTime.now();
+    var asked = false;
+    for (final e in out.entries) {
+      final ms = e.value;
+      final slow = ms != null && ms >= state.slowAt;
+      _slowRounds[e.key] = slow ? (_slowRounds[e.key] ?? 0) + 1 : 0;
+      final bad = ms == null || (_slowRounds[e.key] ?? 0) >= 2;
+      if (!bad || !state.siteServers.containsKey(e.key)) continue;
+      final svc = services.where((x) => x.key == e.key).firstOrNull;
+      if (svc == null) continue;
+      final ai = svc.ai && state.rules.aiGroup;
+      if (!ai && !multi) continue;
+      final tag = ai ? 'ai-$net' : 'site-${e.key}-$net';
+      final last = _retestedAt[tag];
+      if (last != null && now.difference(last) < const Duration(seconds: 30)) {
+        continue;
+      }
+      _retestedAt[tag] = now;
+      asked = true;
+      if (ms != null) _slowRounds[e.key] = 0;
+      diag(
+        'sites: ${e.key} ${ms == null ? 'silent' : 'slow ($ms ms)'}, its servers compared now',
+      );
+      unawaited(
+        c
+            .call(
+              'GET',
+              '/group/${Uri.encodeComponent(tag)}/delay?url=${Uri.encodeQueryComponent(ai ? 'https://chatgpt.com/cdn-cgi/trace' : svc.url)}&timeout=8000',
+            )
+            .then((_) => _refresh())
+            .catchError((_) {}),
+      );
+    }
+    // a look again soon, through the server it is on now
+    if (asked) {
+      Timer(const Duration(seconds: 8), () => unawaited(measureSites()));
     }
   }
 
@@ -2960,7 +3083,7 @@ class Engine extends Notifier<EngineState> {
     // 20 s (a minute in Superlight); a change of the server, the network or the losses at once
     final shape = [name, state.network, state.loss > 0].join('|');
     final now = DateTime.now();
-    final gap = Duration(seconds: state.rules.superLight ? 60 : 20);
+    final gap = Duration(seconds: state.rules.rarePolls ? 60 : 20);
     if (shape == _noticeShape && now.difference(_noticeAt) < gap) return;
     _noticeShape = shape;
     _noticeAt = now;

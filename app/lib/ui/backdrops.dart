@@ -21,17 +21,21 @@ abstract final class Backdrops {
     'Fallen',
   ];
 
+  /// What every sheet has (the blocks light up on events, whatever the sheet), said under each one's description.
+  static const events =
+      'Когда что-то происходит, вспыхивает только свой блок: пинг высокий — красным, сменилась страна — зелёным, сменился сервер у мульти серверов — лаймовым, переход на Wi-Fi — синим, на мобильную сеть — голубым.';
+
   /// The order the choices are listed in (by their numbers): the standard sheet first, then the sunset and the aurora.
   static const order = [2, 6, 3, 0, 1, 4, 5];
 
   static const descriptions = [
     'Мягкие светящиеся круги цвета акцента медленно плывут по фону. Экран обновляется постоянно: чуть больше батареи. Стоят на месте при «Лёгком виде», в Суперлайте и когда в системе отключены анимации.',
     'Карта высот из мелких серых квадратов: рельеф медленно перетекает, точки растут и тают. Экран обновляется постоянно. Стоит на месте там же, где и аврора.',
-    'Фон самой темы: точки, линии или мягкие пятна стекла.',
+    'Ровный спокойный фон без рисунка, как у Fallen, только без метеоров. Ничего не двигается: батарею не тратит.',
     'Шар делает полный оборот вокруг экрана, как солнце: поднимается слева, проходит сверху, спускается справа и возвращается снизу. Экран обновляется постоянно: чуть больше батареи.',
     'Шар чуть смещается и дышит, вокруг него слабое гало другого оттенка. Экран обновляется постоянно: чуть больше батареи.',
     'Мелкие плитки, как мозаика: несколько из них светятся цветом акцента, из угла падает мягкий свет. Рисуется один раз, ничего не двигается: батарею не тратит.',
-    'Тёмный фон, изредка падают приглушённые метеоры цвета акцента. Когда что-то происходит, фон за блоками ненадолго подсвечивается, а рамка блока вспыхивает: пинг высокий — красным, сменилась страна — зелёным, переход на Wi-Fi — синим, на мобильную сеть — голубым.',
+    'Тёмный фон, изредка падают приглушённые метеоры цвета акцента.',
   ];
 
   /// The sheet [index] (0 aurora, 1 topography, 3 sunset, 4 pulse) over the plain [paper].
@@ -479,8 +483,8 @@ class _Motes extends StatefulWidget {
 }
 
 class _MotesState extends State<_Motes> with _MovesOnHome {
-  /// the loop of the meteors: eighteen in it (one every 3 s, as often as the ping is asked), one at a time, each from its own place (the sky does not repeat for a minute)
-  late final SlowClock _clock = SlowClock(const Duration(seconds: 54));
+  /// the loop of the meteors: an hour of 3 s turns (as often as the ping is asked), one meteor a turn, each from a place of its own
+  late final SlowClock _clock = SlowClock(const Duration(hours: 1));
 
   @override
   SlowClock get sheetClock => _clock;
@@ -504,36 +508,12 @@ class _MotesPainter extends CustomPainter {
   final _Colours colours;
   final ValueListenable<double> clock;
 
-  /// how far the event's glow is lit, and its colour (kept while it fades)
-  static double _lit = 0;
-  static Color? _glow;
-
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     // only behind the home screen
     if (!Sheen.home.value) return;
-    // the glow of what is happening: it comes and goes smoothly
-    final want = Sheen.eventColour();
-    if (want != null) _glow = want;
-    _lit += ((want != null ? 1.0 : 0.0) - _lit) * .08;
-    final glow = _glow;
-    if (glow != null && _lit > .01) {
-      final rect = Rect.fromCircle(
-        center: Offset(w * .5, h * .36),
-        radius: w * .95,
-      );
-      canvas.drawRect(
-        Offset.zero & size,
-        Paint()
-          ..shader = RadialGradient(
-            colors: [
-              glow.withValues(alpha: (colours.dark ? .2 : .16) * _lit),
-              glow.withValues(alpha: 0),
-            ],
-          ).createShader(rect),
-      );
-    }
+    // (what is happening lights only its own block, see [Sheen]: the sheet stays as it is)
     // now and then a meteor: a short streak of the accent, toned down, falling on a slant from the upper right to the
     // lower left with a fading tail. Eighteen of them in the loop, one at a time, each at its own time and place
     final hsl = HSLColor.fromColor(colours.hue(0, 1));
@@ -541,40 +521,34 @@ class _MotesPainter extends CustomPainter {
         .withSaturation(hsl.saturation * .55)
         .withLightness(colours.dark ? .72 : .42)
         .toColor();
-    final strength = colours.dark ? .55 : .85;
-    // (when in the loop it starts; where it starts, anywhere on the screen: across of the width and down of the height;
-    // how steep it falls: the same slant for all)
-    const meteors = [
-      (0.0050, 0.49, 0.13, .62),
-      (0.0606, 0.73, 0.08, .62),
-      (0.1161, 0.64, 0.28, .62),
-      (0.1717, 0.29, 0.37, .62),
-      (0.2272, 0.28, 0.32, .62),
-      (0.2828, 0.3, 0.09, .62),
-      (0.3383, 0.56, 0.58, .62),
-      (0.3939, 0.34, 0.18, .62),
-      (0.4494, 0.71, 0.66, .62),
-      (0.5050, 0.67, 0.3, .62),
-      (0.5606, 0.96, 0.06, .62),
-      (0.6161, 0.88, 0.22, .62),
-      (0.6717, 0.36, 0.11, .62),
-      (0.7272, 0.48, 0.58, .62),
-      (0.7828, 0.38, 0.42, .62),
-      (0.8383, 0.72, 0.28, .62),
-      (0.8939, 0.65, 0.07, .62),
-      (0.9494, 0.29, 0.17, .62),
-    ];
-    const flight = .028; // of the loop: about 1.5 s
-    for (final (start, fromX, fromY, steep) in meteors) {
-      final p = (clock.value - start) / flight;
-      if (p < 0 || p > 1) continue;
-      final eased = Curves.easeIn.transform(p);
+    final strength = colours.dark ? .72 : .95;
+    // one meteor every 3 s turn of the hour's loop. Where it starts goes by a sequence that spreads the starts evenly (two
+    // in a row are never close), shaken a little by chance; when in its turn it starts, by chance too
+    const turns = 1200;
+    final turnAt = clock.value * turns;
+    final n = turnAt.floor();
+    double chance(double salt) {
+      final v = math.sin(n * 12.9898 + salt * 78.233) * 43758.5453;
+      return v - v.floorToDouble();
+    }
+
+    double frac(double v) => v - v.floorToDouble();
+    const steep = .62;
+    final fromX =
+        .25 + .72 * frac(.5 + n * .7548776662 + (chance(1) - .5) * .12);
+    final fromY =
+        .05 + .61 * frac(.5 + n * .5698402910 + (chance(2) - .5) * .12);
+    final delay = chance(3) * .12; // of the turn
+    const flight = .8667; // of the turn: about 2.6 s
+    final p = (turnAt - n - delay) / flight;
+    if (p >= 0 && p <= 1) {
+      final eased = Curves.easeInSine.transform(p);
       // the way it goes: the same length whatever the slope
       final dir = Offset(-1, steep) / math.sqrt(1 + steep * steep);
-      final travel = w * .5;
+      final travel = w * .8;
       final head = Offset(w * fromX, h * fromY) + dir * (travel * eased);
       final tailLength =
-          w * .16 * (.4 + .6 * math.sin(math.pi * math.min(p * 1.4, 1)));
+          w * .3 * (.4 + .6 * math.sin(math.pi * math.min(p * 1.4, 1)));
       final tail = head - dir * tailLength;
       final fade = math.sin(math.pi * p); // in, then out
       final a = strength * fade;
@@ -582,7 +556,7 @@ class _MotesPainter extends CustomPainter {
         tail,
         head,
         Paint()
-          ..strokeWidth = 1.6
+          ..strokeWidth = 2.0
           ..strokeCap = StrokeCap.round
           ..shader = ui.Gradient.linear(tail, head, [
             muted.withValues(alpha: 0),
@@ -591,10 +565,10 @@ class _MotesPainter extends CustomPainter {
       );
       canvas.drawCircle(
         head,
-        2.2,
+        2.8,
         Paint()
-          ..color = muted.withValues(alpha: a * .9)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+          ..color = muted.withValues(alpha: a)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.6),
       );
     }
   }

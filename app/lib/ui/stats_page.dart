@@ -487,8 +487,8 @@ class _SpeedPainter extends CustomPainter {
       text: TextSpan(
         text: text,
         style: TextStyle(
-          fontFamily: 'JetBrains Mono',
-          fontSize: size,
+          fontFamily: Palette.textFonts[Palette.textFont].$1,
+          fontSize: size * Palette.textFonts[Palette.textFont].$3,
           color: colour,
         ),
       ),

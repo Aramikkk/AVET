@@ -61,13 +61,13 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage> {
                         children: [
                           Text(
                             label,
-                            style: mono(context, 11, colour: soft, spacing: .8),
+                            style: mono(context, 12, colour: soft, spacing: .8),
                           ),
                           Text(
                             '$value',
                             style: mono(
                               context,
-                              20,
+                              21,
                               weight: FontWeight.w700,
                               colour: muted ? soft : null,
                             ),
@@ -130,7 +130,7 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage> {
                               Text(
                                 'Подключитесь к VPN — здесь появятся приложения, их сайты и маршрут каждого соединения',
                                 textAlign: TextAlign.center,
-                                style: mono(context, 12, colour: soft),
+                                style: mono(context, 13, colour: soft),
                               ),
                             ],
                           ),
@@ -148,7 +148,7 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage> {
                                 child: Center(
                                   child: Text(
                                     'Пока нет соединений',
-                                    style: mono(context, 11, colour: soft),
+                                    style: mono(context, 12, colour: soft),
                                   ),
                                 ),
                               ),
@@ -169,7 +169,7 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage> {
                                         : 'Показать меньше 1 МБ: $hidden',
                                     style: mono(
                                       context,
-                                      13,
+                                      14,
                                       weight: FontWeight.w700,
                                     ),
                                   ),
@@ -233,7 +233,7 @@ class _Card extends StatelessWidget {
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: mono(context, 11.7, weight: FontWeight.w700),
+                  style: mono(context, 12.7, weight: FontWeight.w700),
                 ),
                 const SizedBox(height: 3.6),
                 Row(
@@ -248,7 +248,7 @@ class _Card extends StatelessWidget {
                     const SizedBox(width: 9),
                     Text(
                       byApp ? 'сайтов: $sites' : 'приложений: $sites',
-                      style: mono(context, 11, colour: soft),
+                      style: mono(context, 12, colour: soft),
                     ),
                   ],
                 ),
@@ -261,7 +261,7 @@ class _Card extends StatelessWidget {
             children: [
               Text(
                 bytesText(group.bytes),
-                style: mono(context, 11.7, weight: FontWeight.w700),
+                style: mono(context, 12.7, weight: FontWeight.w700),
               ),
               const SizedBox(height: 5.4),
               Text(

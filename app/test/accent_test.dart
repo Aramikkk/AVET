@@ -89,39 +89,57 @@ void main() {
   });
 
   test('the presets name the colours asked for', () {
-    expect(Palette.accentNames[RuleSettings.presets[0]![1]], 'Бургунди');
+    expect(Palette.accentNames[RuleSettings.presets[0]![1]], 'Красный');
     expect(Palette.accentNames[RuleSettings.presets[1]![1]], 'Ледяной');
     expect(Palette.accentNames[RuleSettings.presets[2]![1]], 'Лайм');
   });
 
   test('every look keeps its own volume, accent and sheet', () {
-    // no file: Glass begins with Liquid, burgundy and the Fallen sheet, in the grotesk figures
+    // no file: Glass begins with Liquid, red and the standard sheet, in the grotesk figures
     final fresh = RuleSettings.fromJson({});
-    expect([fresh.style, fresh.depth, fresh.bg, fresh.digits], [0, 3, 6, 0]);
-    expect(Palette.accentNames[fresh.accent], 'Бургунди');
-    // every look begins with Liquid and the Fallen sheet: Studio lime, Mosaic icy
+    expect([fresh.style, fresh.depth, fresh.bg, fresh.digits], [0, 3, 2, 0]);
+    expect(Palette.accentNames[fresh.accent], 'Красный');
+    // every look begins with Liquid and the standard sheet: Studio lime, Mosaic icy
     final studio = fresh.switchedTo(2);
-    expect([studio.depth, studio.bg], [3, 6]);
+    expect([studio.depth, studio.bg], [3, 2]);
     expect(Palette.accentNames[studio.accent], 'Лайм');
     final mosaic = studio.switchedTo(1);
-    expect([mosaic.depth, mosaic.bg], [3, 6]);
+    expect([mosaic.depth, mosaic.bg], [3, 2]);
     expect(Palette.accentNames[mosaic.accent], 'Ледяной');
     // a change made in a look stays with that look
     final changed = mosaic.copyWith(depth: 1, bg: 0).switchedTo(0);
-    expect([changed.depth, changed.bg], [3, 6]);
+    expect([changed.depth, changed.bg], [3, 2]);
     final again = changed.switchedTo(1);
     expect([again.depth, again.bg], [1, 0]);
     // and it is stored
     final back = RuleSettings.fromJson(again.toJson());
     expect(back.switchedTo(2).depth, 3);
-    expect(back.switchedTo(0).bg, 6);
+    expect(back.switchedTo(0).bg, 2);
   });
-  test('the launcher icon setting is kept and defaults to off', () {
-    expect(const RuleSettings().tintIcon, isFalse);
+  test('the launcher icon setting is kept and defaults to on', () {
+    expect(const RuleSettings().tintIcon, isTrue);
     final on = RuleSettings.fromJson(
       (const RuleSettings().copyWith(tintIcon: true)).toJson(),
     );
     expect(on.tintIcon, isTrue);
-    expect(RuleSettings.fromJson(const {}).tintIcon, isFalse);
+    expect(RuleSettings.fromJson(const {}).tintIcon, isTrue);
+    expect(
+      RuleSettings.fromJson(
+        (const RuleSettings().copyWith(tintIcon: false)).toJson(),
+      ).tintIcon,
+      isFalse,
+    );
+  });
+
+  test('the text: 105% of before is 100% now, the weights moved a step', () {
+    expect(RuleSettings.fromJson({'fontScaleV2': 1.05}).fontScale, 1.0);
+    expect(RuleSettings.fromJson({'fontScaleV2': 1.15}).fontScale, 1.1);
+    expect(RuleSettings.fromJson({}).fontScale, 1.0);
+    expect(RuleSettings.fromJson({'textWeight': 0}).textWeight, 1);
+    expect(RuleSettings.fromJson({'textWeight': 1}).textWeight, 2);
+    expect(RuleSettings.fromJson({}).textWeight, 1);
+    final r = RuleSettings.fromJson({'fontScaleV2': 1.05, 'textWeight': 0});
+    final again = RuleSettings.fromJson(r.toJson());
+    expect([again.fontScale, again.textWeight], [1.0, 1]);
   });
 }

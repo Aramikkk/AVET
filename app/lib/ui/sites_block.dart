@@ -8,7 +8,7 @@ import 'package:avet/ui/pixel_flag.dart';
 import 'package:avet/ui/vector_flag.dart';
 import 'package:avet/ui/motion.dart';
 import 'package:avet/ui/widgets.dart';
-import 'package:avet/ui/settings_page.dart' show openSiteServers;
+import 'package:avet/ui/settings_page.dart' show openSiteServers, desc;
 import 'package:avet/ui/slow_clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -36,14 +36,33 @@ class SitesBlock extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) => LayoutBuilder(
     builder: (context, c) {
       // given more height (a tall screen) the scales grow into it
+      // (the offer to set the mode up takes its own place below the scales)
       final barHeight = c.hasTightHeight
-          ? (c.maxHeight - 132).clamp(70.0, 260.0)
+          ? (c.maxHeight - 136 - (_offer(ref) ? 48 : 0)).clamp(70.0, 260.0)
           : 70.0;
-      return _block(context, ref, barHeight);
+      return _block(context, ref, barHeight, c.maxWidth);
     },
   );
 
-  Widget _block(BuildContext context, WidgetRef ref, double barHeight) {
+  /// The offer to set the multi-server mode up: only when it has never been on, on any network (switched off after
+  /// that, it is the user's choice and nothing is offered), and there is a subscription to choose servers from.
+  static bool _offer(WidgetRef ref) {
+    final s = ref.watch(engineProvider);
+    final lte = s.network == 'mobile';
+    final multi = lte ? s.rules.siteGroupsLte : s.rules.siteGroups;
+    return !multi &&
+        !s.rules.sitesSeen &&
+        !s.rules.siteGroups &&
+        !s.rules.siteGroupsLte &&
+        s.subs.isNotEmpty;
+  }
+
+  Widget _block(
+    BuildContext context,
+    WidgetRef ref,
+    double barHeight,
+    double width,
+  ) {
     final s = ref.watch(engineProvider);
     final engine = ref.read(engineProvider.notifier);
     final dark = isDark(context);
@@ -78,6 +97,26 @@ class SitesBlock extends ConsumerWidget {
       ),
     );
     final pillInk = multi ? Palette.paper(dark) : ink;
+    // one size for all the names: the longest has to fit its column, the others are drawn as large as it is
+    final names = [
+      for (final k in s.rules.homeSites) (serviceNames[k] ?? k).toUpperCase(),
+    ];
+    var nameSize = 10.0;
+    if (names.isNotEmpty && width.isFinite) {
+      final column = (width - 32) / names.length - 6;
+      var widest = 0.0;
+      for (final n in names) {
+        final p = TextPainter(
+          text: TextSpan(text: n, style: mono(context, 10, spacing: 0)),
+          textDirection: TextDirection.ltr,
+          textScaler: MediaQuery.textScalerOf(context),
+          maxLines: 1,
+        )..layout();
+        if (p.width > widest) widest = p.width;
+        p.dispose();
+      }
+      if (widest > column && column > 0) nameSize = 10 * column / widest;
+    }
     return Paper(
       padding: const EdgeInsets.fromLTRB(16, 3, 16, 10),
       child: Column(
@@ -149,6 +188,7 @@ class SitesBlock extends ConsumerWidget {
                     ms: s.sites[k],
                     slowAt: s.slowAt,
                     barHeight: barHeight,
+                    nameSize: nameSize,
                     step: s.rules.pingHttp ? 80 : 160,
                     measured: s.phase != Phase.off && s.sitesMeasured,
                     // the flag of the server the service goes through: its own group's in the multi-server mode, else
@@ -177,36 +217,37 @@ class SitesBlock extends ConsumerWidget {
                 ),
             ],
           ),
-          // not set up yet (the mode is off for this network): what it gives, and a way to where it is set
-          if (!multi && s.subs.isNotEmpty) ...[
+          // never set up (the mode has not been on on any network): what it gives, and a way to where it is set. Once it
+          // has been on, switching it off is the user's choice and nothing is offered
+          if (_offer(ref)) ...[
             const SizedBox(height: 10),
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () => openSiteServers(context),
               child: Container(
-                height: 40,
+                height: 38,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Palette.red.withValues(alpha: .7)),
-                  color: Palette.red.withValues(alpha: .10),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: soft.withValues(alpha: .35)),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.tune_rounded, size: 18, color: Palette.red),
-                    const SizedBox(width: 8),
+                    Icon(Icons.tune_rounded, size: 16, color: soft),
+                    const SizedBox(width: 10),
                     Expanded(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Каждому сервису свой сервер: настроить',
-                          maxLines: 1,
-                          style: mono(context, 11, colour: ink, spacing: 0),
-                        ),
+                      child: Text(
+                        'Каждому сервису свой сервер',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: desc(context, 12),
                       ),
                     ),
-                    Icon(Icons.chevron_right_rounded, size: 20, color: soft),
+                    Text(
+                      'НАСТРОИТЬ',
+                      style: mono(context, 10, colour: ink, spacing: 1.5),
+                    ),
+                    Icon(Icons.chevron_right_rounded, size: 18, color: soft),
                   ],
                 ),
               ),
@@ -225,6 +266,7 @@ class _Column extends StatelessWidget {
     required this.measured,
     required this.slowAt,
     required this.barHeight,
+    this.nameSize = 10,
     required this.step,
     this.flag,
   });
@@ -236,6 +278,9 @@ class _Column extends StatelessWidget {
   final bool measured;
   final int slowAt;
   final double barHeight;
+
+  /// the size of the name, the same for all the columns
+  final double nameSize;
 
   /// the milliseconds one of the five steps of the capsule stands for
   final double step;
@@ -281,14 +326,23 @@ class _Column extends StatelessWidget {
         ),
         // the room the shorter capsule leaves is air between it and what is under it
         SizedBox(height: 8 + barHeight * .14),
-        SizedBox(
-          height: 13,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              name.toUpperCase(),
-              maxLines: 1,
-              style: mono(context, 11, colour: Palette.soft(dark), spacing: 0),
+        // (a gap between the names: a long one is drawn smaller rather than run into its neighbour)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 3),
+          child: SizedBox(
+            height: 13,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                name.toUpperCase(),
+                maxLines: 1,
+                style: mono(
+                  context,
+                  nameSize,
+                  colour: Palette.soft(dark),
+                  spacing: 0,
+                ),
+              ),
             ),
           ),
         ),

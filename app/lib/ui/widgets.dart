@@ -147,6 +147,25 @@ abstract final class Palette {
   /// the sheet behind the pages (the Background setting): 2 the look's own
   static int bg = 2;
 
+  /// how heavy the text of the home screen and the tabs is (the Themes setting): 0 thinner, 1 as made, 2 heavier
+  static int textWeight = 1;
+
+  /// the faces the text of the home screen and the tabs can be in (the Themes setting): the family, whether its letters
+  /// are all of one width, and how much larger it is drawn to look as large as the others
+  static const textFonts = [
+    ('JetBrains Mono', true, 1.0),
+    ('IBM Plex Mono', true, 1.0),
+    ('Roboto Mono', true, 1.0),
+    ('Fira Code', true, 1.0),
+    ('Source Code Pro', true, 1.02),
+    ('Ubuntu Mono', true, 1.14),
+    ('Manrope', false, 1.04),
+    ('Golos Text', false, 1.04),
+  ];
+
+  /// the face chosen (a place in [textFonts])
+  static int textFont = 7;
+
   /// How many pages of the settings are open: while there are any, all the text of the app (the pages, the sheets over
   /// them) is in one proportional face, the same on every page.
   static int settingsOpen = 0;
@@ -349,6 +368,20 @@ abstract final class Palette {
 bool isDark(BuildContext context) =>
     Theme.of(context).brightness == Brightness.dark;
 
+/// A weight of the home screen and the tabs as the Themes setting wants it: a step lighter, as made, or a step heavier.
+FontWeight weighedText(FontWeight w) => switch (Palette.textWeight) {
+  // thinner: the plain text in the regular face (400 where the face has it)
+  0 => switch (w) {
+    FontWeight.w500 || FontWeight.w600 => FontWeight.w400,
+    FontWeight.w700 => FontWeight.w600,
+    _ => w,
+  },
+  // as made (what was "thinner" before)
+  1 => w == FontWeight.w600 ? FontWeight.w500 : w,
+  // heavier (what was "as made" before)
+  _ => w,
+};
+
 TextStyle mono(
   BuildContext context,
   double size, {
@@ -359,17 +392,34 @@ TextStyle mono(
   // the settings have one concept for all their text: Manrope (the titles of the pages stay in the brand's face)
   // (by the place of the text, not by a global: the page under a page of the settings keeps its own face while it slides away,
   // a text that changed its face in the middle of the slide was a flash)
-  final proportional =
-      Palette.style >= 1 ||
-      context.getInheritedWidgetOfExactType<FlatScope>() != null;
+  final page = context.getInheritedWidgetOfExactType<FlatScope>() != null;
+  final proportional = Palette.style >= 1 || page;
+  // (the face of the home screen and the tabs is the one chosen in Themes)
+  final (face, even, grow) = Palette
+      .textFonts[Palette.textFont.clamp(0, Palette.textFonts.length - 1)];
+  // (the pages of the settings are in the chosen face too; Mosaic and Studio keep Manrope)
+  final family = page ? face : (proportional ? 'Manrope' : face);
   return TextStyle(
-    fontFamily: proportional ? 'Manrope' : 'JetBrains Mono',
-    fontSize: proportional ? size * 1.04 : size,
-    fontWeight:
-        (proportional || Palette.depth >= 2) && weight == FontWeight.w500
-        ? FontWeight.w600
-        : weight,
-    letterSpacing: proportional ? spacing * .25 : spacing,
+    fontFamily: family,
+    fontSize: page
+        ? size * (even ? grow : 1.04)
+        : (proportional ? size * 1.04 : size * grow),
+    fontWeight: page
+        // the pages of the settings: a step heavier all through (Manrope goes up to 800)
+        ? switch (weight) {
+            FontWeight.w500 => FontWeight.w700,
+            FontWeight.w600 => FontWeight.w700,
+            FontWeight.w700 => FontWeight.w800,
+            _ => weight,
+          }
+        : weighedText(
+            (proportional || Palette.depth >= 2) && weight == FontWeight.w500
+                ? FontWeight.w600
+                : weight,
+          ),
+    letterSpacing: (proportional && !(page && even)) || !even
+        ? spacing * .25
+        : spacing,
     color: colour ?? Palette.ink(isDark(context)),
     height: 1.25,
   );
@@ -378,68 +428,6 @@ TextStyle mono(
 /// The page's dotted paper.
 /// Whether the sheet has its pattern of dots (the Themes setting).
 bool dotsNow = true;
-
-/// Studio's sheet: fine lines across it and a few bright ones in the accent.
-class _StripesPainter extends CustomPainter {
-  _StripesPainter(this.paper, this.ink, this.accent);
-
-  final Color paper;
-  final Color ink;
-  final Color accent;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = paper);
-    final fine = Paint()
-      ..color = ink.withValues(alpha: .07)
-      ..strokeWidth = 1;
-    final slope = size.height * .62;
-    for (var x = -slope; x < size.width + slope; x += 22) {
-      canvas.drawLine(Offset(x, 0), Offset(x + slope, size.height), fine);
-    }
-    // the glow of the bright lines: wider, fainter strokes (a blur filter on the whole sheet was heavy on every page)
-    final halo = Paint()
-      ..color = accent.withValues(alpha: .10)
-      ..strokeWidth = 11;
-    final glow = Paint()
-      ..color = accent.withValues(alpha: .22)
-      ..strokeWidth = 6;
-    final line = Paint()
-      ..color = accent.withValues(alpha: .9)
-      ..strokeWidth = 2;
-    // the bright lines run over the whole sheet (not three of them): one every ~118 px, each with a strength of its own
-    const strengths = [1.0, .45, .75, .32, .6, .9, .4, .68];
-    final step = size.width * .29;
-    var i = 0;
-    // (the first line would show only a scrap of itself in the bottom left corner: it is left out)
-    i = 1;
-    for (var x = -slope + step * 1.4; x < size.width; x += step, i++) {
-      final s = strengths[i % strengths.length];
-      final to = Offset(x + slope, size.height);
-      canvas.drawLine(
-        Offset(x, 0),
-        to,
-        halo..color = accent.withValues(alpha: .10 * s),
-      );
-      canvas.drawLine(
-        Offset(x, 0),
-        to,
-        glow..color = accent.withValues(alpha: .22 * s),
-      );
-      canvas.drawLine(
-        Offset(x, 0),
-        to,
-        line
-          ..color = accent.withValues(alpha: .9 * s)
-          ..strokeWidth = s > .6 ? 2 : 1.4,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_StripesPainter old) =>
-      old.paper != paper || old.ink != ink || old.accent != accent;
-}
 
 class DotBackdrop extends StatelessWidget {
   const DotBackdrop({super.key, required this.child});
@@ -471,56 +459,18 @@ class DotBackdrop extends StatelessWidget {
         ],
       );
     }
-    final painter = Palette.style == 2
-        ? _StripesPainter(Palette.paper(dark), Palette.ink(dark), Palette.red)
-        : _DotGridPainter(
-            Palette.paper(dark),
-            dotsNow && Palette.style == 0
-                ? Palette.grid(dark)
-                : Palette.paper(dark),
-          );
-    // the background is drawn once on a layer of its own (its glowing lines and thousands of dots are costly): what
-    // moves over it no longer makes it be drawn again every frame
+    // the standard sheet: the plain paper, as under Fallen's meteors (no dots, no lines)
     return Stack(
       fit: StackFit.expand,
       children: [
-        RepaintBoundary(
-          child: GreyWhenOff(
-            off: !Palette.running,
-            child: CustomPaint(painter: painter),
-          ),
+        GreyWhenOff(
+          off: !Palette.running,
+          child: ColoredBox(color: Palette.paper(dark)),
         ),
         child,
       ],
     );
   }
-}
-
-class _DotGridPainter extends CustomPainter {
-  _DotGridPainter(this.paper, this.dot);
-
-  final Color paper;
-  final Color dot;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = paper);
-    canvas.drawPoints(
-      ui.PointMode.points,
-      [
-        for (var y = 6.0; y < size.height; y += 10)
-          for (var x = 6.0; x < size.width; x += 10) Offset(x, y),
-      ],
-      Paint()
-        ..color = dot
-        ..strokeCap = StrokeCap.round
-        ..strokeWidth = 1.6,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_DotGridPainter old) =>
-      old.paper != paper || old.dot != dot;
 }
 
 /// Draws its child in colour, or, when [off] (the VPN is not running), nearly grey, fading between the two: the screen looks
@@ -1325,12 +1275,14 @@ class Sheen extends CustomPainter {
     if (home.value != v) home.value = v;
   }
 
-  /// the ping is slow (the ping's block goes red), more than half the multi-servers are (theirs does)
+  /// the ping is slow (the ping's block goes red)
   static bool alarm = false;
-  static bool multiAlarm = false;
 
   /// the country of the server in use changed then: the server's block flashes green for a moment
   static DateTime greenAt = DateTime(2000);
+
+  /// the server of one of the multi-servers changed then: their block flashes lime for a moment
+  static DateTime multiGreenAt = DateTime(2000);
 
   /// the phone moved to another network then: the ping's block flashes blue (Wi-Fi) or light blue (mobile data)
   static DateTime netAt = DateTime(2000);
@@ -1343,8 +1295,8 @@ class Sheen extends CustomPainter {
   static final _tint = <SheenKind, double>{};
   static final _colour = <SheenKind, Color>{};
 
-  /// The colour of what is happening now, for the sheet behind the blocks ("Перелив"): a slow ping (red) first, then a
-  /// new network, a new country, slow multi-servers; null: nothing.
+  /// The colour of what is happening now: a slow ping (red) first, then a new network, a new country, slow
+  /// multi-servers; null: nothing.
   static Color? eventColour() =>
       _wanted(SheenKind.ping) ??
       _wanted(SheenKind.server) ??
@@ -1364,7 +1316,10 @@ class Sheen extends CustomPainter {
       case SheenKind.ping:
         return alarm ? Palette.alert : null;
       case SheenKind.multi:
-        return multiAlarm ? Palette.alert : null;
+        // (lime: a server of theirs changed; nothing else lights them)
+        return now.difference(multiGreenAt) < _flash
+            ? const Color(0xFFB8F02E)
+            : null;
       case SheenKind.server:
         return now.difference(greenAt) < _flash
             ? const Color(0xFF34D27B)
@@ -1391,6 +1346,18 @@ class Sheen extends CustomPainter {
       rect.deflate(.5),
       Radius.circular(radius),
     );
+    // a soft glow inward from the edge, inside the block only (nothing round it lights up)
+    canvas.save();
+    canvas.clipRRect(rr);
+    canvas.drawRRect(
+      rr,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 14
+        ..color = colour.withValues(alpha: lit * (dark ? .30 : .22))
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9),
+    );
+    canvas.restore();
     const lo = .12, hi = .85;
     canvas.drawRRect(
       rr,

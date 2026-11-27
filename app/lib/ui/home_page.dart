@@ -298,7 +298,7 @@ class HomeSubLine extends StatelessWidget {
       }
     }
     if (parts.isEmpty) return const SizedBox(height: 6);
-    final style = mono(context, 12, weight: FontWeight.w800, spacing: 1.6);
+    final style = mono(context, 11, weight: FontWeight.w700, spacing: 1.6);
     return Padding(
       padding: const EdgeInsets.only(top: 2, bottom: 6),
       child: Center(
@@ -850,7 +850,7 @@ class _Row extends StatelessWidget {
           maxLines: 1,
           style: mono(
             context,
-            11,
+            10,
             colour: Palette.soft(isDark(context)),
             spacing: 2,
           ),
@@ -865,7 +865,7 @@ class _Row extends StatelessWidget {
               child: Text(
                 value,
                 maxLines: 1,
-                style: mono(context, 14, weight: FontWeight.w800, spacing: .5),
+                style: mono(context, 13, weight: FontWeight.w700, spacing: .5),
               ),
             ),
           ),
@@ -988,7 +988,7 @@ class _ServerRow extends ConsumerWidget {
                                 overflow: TextOverflow.ellipsis,
                                 style: mono(
                                   context,
-                                  11,
+                                  10,
                                   colour: Palette.soft(dark),
                                   spacing: .8,
                                 ),
@@ -1001,8 +1001,8 @@ class _ServerRow extends ConsumerWidget {
                                   maxLines: 1,
                                   style: mono(
                                     context,
-                                    19,
-                                    weight: FontWeight.w800,
+                                    18,
+                                    weight: FontWeight.w700,
                                     spacing: 1,
                                   ),
                                 ),

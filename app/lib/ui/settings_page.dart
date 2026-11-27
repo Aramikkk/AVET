@@ -195,8 +195,9 @@ class _MenuRow extends StatelessWidget {
 /// The small explanatory text of a settings page (a description, a hint): in a proportional face (long Russian
 /// paragraphs read better in it than in the mono one), lighter in colour by night and darker by day than the soft grey.
 TextStyle desc(BuildContext context, double size) => TextStyle(
-  fontFamily: 'Manrope',
-  fontWeight: FontWeight.w500,
+  // (in the face chosen in Themes, as the rest of the app)
+  fontFamily: Palette.textFonts[Palette.textFont].$1,
+  fontWeight: FontWeight.w600,
   fontSize: size + 2.0,
   height: 1.45,
   color: isDark(context) ? const Color(0xFFC4C4BF) : const Color(0xFF4B4B46),
@@ -659,13 +660,6 @@ class _Economy extends ConsumerWidget {
           (v) => engine.setRules(r.copyWith(superLight: v)),
           hint:
               'Минимум нагрузки: только главный экран и настройки, проверки реже, без статистики и мульти серверов.',
-        ),
-        _switch(
-          context,
-          'Лёгкий вид',
-          r.lightLook,
-          (v) => engine.setRules(r.copyWith(lightLook: v)),
-          hint: 'Без скольжения страниц и волн: меньше нагрузка. Цвета те же.',
         ),
         _switch(
           context,
@@ -3541,6 +3535,16 @@ class _Themes extends ConsumerWidget {
                   style: desc(context, 11),
                 ),
               ),
+              if (r.lightLook || r.superLight)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(2, 6, 2, 0),
+                  child: Text(
+                    r.lightLook
+                        ? 'Сейчас включён лёгкий вид: блоки плоские, пока он не выключен (простой режим ниже).'
+                        : 'Сейчас включён Суперлайт: блоки плоские, пока он не выключен.',
+                    style: desc(context, 11).copyWith(color: Palette.red),
+                  ),
+                ),
             ],
           ),
         ),
@@ -3624,6 +3628,59 @@ class _Themes extends ConsumerWidget {
             hint:
                 'Иконка на рабочем столе повторяет цвет акцента. Она меняется, когда вы выходите из приложения; на пару секунд может пропасть.',
             icon: Icons.palette_outlined,
+          ),
+        ),
+        _caption(context, 'ПРОСТОЙ РЕЖИМ'),
+        Paper(
+          radius: 18,
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              _switch(
+                context,
+                'Лёгкий вид',
+                r.lightLook,
+                // (off takes the fewer polls off too: they come on top of it)
+                (v) {
+                  final was = r.fewPolls;
+                  engine.setRules(
+                    v
+                        ? r.copyWith(lightLook: true)
+                        : r.copyWith(lightLook: false, fewPolls: false),
+                  );
+                  if (!v && was && ref.read(engineProvider).on) {
+                    unawaited(engine.restart());
+                  }
+                },
+                hint:
+                    'Без лишних анимаций, прозрачности и объёма: блоки плоские, фон стоит, переходы короткие. Меньше нагрузка на систему.',
+                icon: Icons.blur_off_rounded,
+              ),
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: Palette.ink(dark).withValues(alpha: .14),
+              ),
+              _switch(
+                context,
+                'Реже опросы',
+                r.fewPolls,
+                (v) {
+                  engine.setRules(
+                    v
+                        ? r.copyWith(fewPolls: true, lightLook: true)
+                        : r.copyWith(fewPolls: false),
+                  );
+                  // the core checks the servers at its own pace: it is made again with the new one
+                  if (ref.read(engineProvider).on) {
+                    unawaited(engine.restart());
+                  }
+                },
+                hint:
+                    'Вдобавок к лёгкому виду: ядро, пинг, соединения и мульти серверы опрашиваются в 2–3 раза реже, серверы проверяются вдвое реже. Всё остаётся на месте, только обновляется не так часто. Меньше расход батареи, памяти и процессора.',
+                icon: Icons.av_timer_rounded,
+              ),
+            ],
           ),
         ),
         _caption(context, 'МАСШТАБ И ШРИФТ'),
@@ -3726,6 +3783,68 @@ class _Themes extends ConsumerWidget {
                     ),
                 ],
               ),
+              const SizedBox(height: 14),
+              Text(
+                'Шрифт на главной и во вкладках',
+                style: mono(context, 13, weight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 3.2,
+                children: [
+                  for (final (i, (face, _, grow)) in Palette.textFonts.indexed)
+                    GestureDetector(
+                      onTap: () => engine.setRules(r.copyWith(textFont: i)),
+                      child: Container(
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: r.textFont == i ? ink : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: ink.withValues(
+                              alpha: r.textFont == i ? 1 : .25,
+                            ),
+                          ),
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            face,
+                            maxLines: 1,
+                            style: TextStyle(
+                              fontFamily: face,
+                              fontSize: 14 * grow,
+                              fontWeight: FontWeight.w700,
+                              color: r.textFont == i
+                                  ? Palette.paper(dark)
+                                  : ink,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Толщина текста на главной и во вкладках',
+                style: mono(context, 13, weight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              SegmentedChoice(
+                height: 40,
+                compact: true,
+                labels: const ['Тоньше', 'Обычно', 'Толще'],
+                icons: const [Icons.circle, Icons.circle, Icons.circle],
+                selected: r.textWeight.clamp(0, 2),
+                onChanged: (i) => engine.setRules(r.copyWith(textWeight: i)),
+              ),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -3743,9 +3862,25 @@ class _Themes extends ConsumerWidget {
                       style: mono(context, 18, weight: FontWeight.w800),
                     ),
                     const SizedBox(width: 14),
+                    // (as the home screen and the tabs show it, at the weight chosen)
                     Text(
                       'AVET · 54 мс · Финляндия',
-                      style: mono(context, 12.5),
+                      style: TextStyle(
+                        fontFamily:
+                            Palette.textFonts[r.textFont.clamp(0, 7)].$1,
+                        fontSize:
+                            12.5 * Palette.textFonts[r.textFont.clamp(0, 7)].$3,
+                        letterSpacing:
+                            Palette.textFonts[r.textFont.clamp(0, 7)].$2
+                            ? 1
+                            : .25,
+                        color: ink,
+                        fontWeight: weighedText(
+                          Palette.depth >= 2
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -3955,30 +4090,10 @@ class _Themes extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(2, 10, 2, 0),
                   child: Text(
-                    Backdrops.descriptions[r.bg.clamp(
-                      0,
-                      Backdrops.names.length - 1,
-                    )],
+                    '${Backdrops.descriptions[r.bg.clamp(0, Backdrops.names.length - 1)]} ${Backdrops.events}',
                     style: desc(context, 11.5),
                   ),
                 ),
-                if (r.bg == 2) ...[
-                  Divider(height: 18, color: ink.withValues(alpha: .14)),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Точечная сетка',
-                          style: mono(context, 14, weight: FontWeight.w700),
-                        ),
-                      ),
-                      Switch(
-                        value: r.dots,
-                        onChanged: (v) => engine.setRules(r.copyWith(dots: v)),
-                      ),
-                    ],
-                  ),
-                ],
                 Divider(height: 18, color: ink.withValues(alpha: .14)),
                 Text(
                   'Оттенок',

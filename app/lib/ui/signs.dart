@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 /// The bolt or the little man (Dots): one drawing, in thick round shapes.
@@ -8,6 +10,7 @@ class DotSign extends StatelessWidget {
     required this.colour,
     this.charge,
     this.progress,
+    this.flash,
     this.repaint,
   });
 
@@ -16,6 +19,7 @@ class DotSign extends StatelessWidget {
   final Color colour;
   final Color? charge;
   final ValueGetter<double>? progress;
+  final ValueGetter<double>? flash;
   final Listenable? repaint;
 
   @override
@@ -27,6 +31,7 @@ class DotSign extends StatelessWidget {
             colour,
             charge: charge ?? colour,
             progress: progress,
+            flash: flash,
             repaint: repaint,
           ),
   );
@@ -224,52 +229,94 @@ class BoltPainter extends CustomPainter {
     this.colour, {
     required this.charge,
     this.progress,
+    this.flash,
     super.repaint,
   });
 
   final Color colour;
 
-  /// the colour of the charge while the servers are pinged
+  /// the colour of the current while the servers are pinged, and of the strike when they are done
   final Color charge;
 
-  /// null: at rest, all of the bolt in [colour]; else it charges from the bottom up in [charge], the rest dim
+  /// null: at rest; else where the current running up the bolt is (0..1, round and round)
   final ValueGetter<double>? progress;
+
+  /// the strike when the best server is found: 1 just struck, fading to 0
+  final ValueGetter<double>? flash;
+
+  static final _path = Path()
+    ..moveTo(13.2, 1)
+    ..lineTo(4, 14)
+    ..lineTo(10, 14)
+    ..lineTo(8, 24)
+    ..lineTo(17.4, 10.2)
+    ..lineTo(11.4, 10.2)
+    ..lineTo(15, 1)
+    ..close();
+
+  void _draw(Canvas canvas, Paint fill) {
+    canvas.drawPath(_path, fill);
+    canvas.drawPath(
+      _path,
+      Paint()
+        ..color = fill.color
+        ..shader = fill.shader
+        ..maskFilter = fill.maskFilter
+        ..style = PaintingStyle.stroke
+        ..strokeJoin = StrokeJoin.round
+        ..strokeWidth = 1.8,
+    );
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
     canvas.save();
     canvas.scale(size.width / 21, size.height / 25);
-    final path = Path()
-      ..moveTo(13.2, 1)
-      ..lineTo(4, 14)
-      ..lineTo(10, 14)
-      ..lineTo(8, 24)
-      ..lineTo(17.4, 10.2)
-      ..lineTo(11.4, 10.2)
-      ..lineTo(15, 1)
-      ..close();
-    void draw(Color c) {
-      canvas.drawPath(path, Paint()..color = c);
-      canvas.drawPath(
-        path,
-        Paint()
-          ..color = c
-          ..style = PaintingStyle.stroke
-          ..strokeJoin = StrokeJoin.round
-          ..strokeWidth = 1.8,
-      );
-    }
-
     final p = progress?.call();
+    final f = flash?.call() ?? 0;
     if (p == null) {
-      draw(colour);
+      if (f <= 0) {
+        _draw(canvas, Paint()..color = colour);
+      } else {
+        // the strike: the bolt lights up in the charge's colour, swells a little with a glow round it, and calms down
+        final swell = 1 + .14 * math.sin(math.pi * math.min(1, (1 - f) * 1.6));
+        canvas.translate(10.5, 12.5);
+        canvas.scale(swell);
+        canvas.translate(-10.5, -12.5);
+        _draw(
+          canvas,
+          Paint()
+            ..color = charge.withValues(alpha: .55 * f)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.2),
+        );
+        _draw(canvas, Paint()..color = Color.lerp(colour, charge, f)!);
+      }
     } else {
-      draw(colour.withValues(alpha: .26));
-      final filled = (p * 9).floor().clamp(0, 9) / 9;
-      canvas.save();
-      canvas.clipRect(Rect.fromLTRB(0, 25 * (1 - filled), 21, 25));
-      draw(charge);
-      canvas.restore();
+      // the current: a bright streak runs up the dim bolt, from the tip to the top, with a fading tail and a glow
+      _draw(canvas, Paint()..color = colour.withValues(alpha: .24));
+      final head = 29 - 35 * Curves.easeInOutSine.transform(p);
+      const tail = 13.0;
+      Shader streak(double a) => LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          charge.withValues(alpha: 0),
+          charge.withValues(alpha: a),
+          charge.withValues(alpha: 0),
+        ],
+        stops: [
+          ((head - 2.5) / 25).clamp(0.0, 1.0),
+          (head / 25).clamp(0.0, 1.0),
+          ((head + tail) / 25).clamp(0.0, 1.0),
+        ],
+      ).createShader(const Rect.fromLTWH(0, 0, 21, 25));
+      _draw(
+        canvas,
+        Paint()
+          ..shader = streak(.7)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.6),
+      );
+      _draw(canvas, Paint()..shader = streak(1));
     }
     canvas.restore();
   }
@@ -278,5 +325,6 @@ class BoltPainter extends CustomPainter {
   bool shouldRepaint(BoltPainter old) =>
       old.colour != colour ||
       old.charge != charge ||
-      (old.progress == null) != (progress == null);
+      (old.progress == null) != (progress == null) ||
+      (old.flash == null) != (flash == null);
 }

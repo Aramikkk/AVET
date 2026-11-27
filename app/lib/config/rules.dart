@@ -18,6 +18,7 @@ class RuleOptions {
     this.aiMobile = const [],
     this.sleepWifi = false,
     this.sleepLte = false,
+    this.rarePolls = false,
   });
 
   /// 0: off; 1 mild, 2 normal, 3 strict (the more lists, the more is refused, and the more sites leaning on an ad host
@@ -35,6 +36,9 @@ class RuleOptions {
   /// the same for mobile data (its own switch)
   final bool siteGroupsLte;
   final int siteGroupsTolerance;
+
+  /// fewer polls or Superlight: each service's servers are compared half as often (every 4 min, not 2)
+  final bool rarePolls;
 
   /// the services that get a group (the ones the home screen shows); empty: every one
   final List<String> siteKeys;
@@ -392,7 +396,7 @@ abstract final class Rules {
       'tag': tag,
       'outbounds': servers,
       'url': url,
-      'interval': '2m',
+      'interval': o.rarePolls ? '4m' : '2m',
       'idle_timeout': '30m',
       'tolerance': tolerance,
       // what's open stays where it is (a call, a video); new connections go through the new server

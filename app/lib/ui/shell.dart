@@ -163,6 +163,9 @@ class _ShellState extends ConsumerState<Shell>
 
   /// the country of the server in use last seen (its change flashes the server's block green)
   String? _country;
+
+  /// the server each multi-server was last seen on, by the service's key
+  Map<String, String> _siteCountries = const {};
   String? _net;
 
   /// the tab shown: a notifier, because the pages live in a route that is built once and has to follow it
@@ -238,19 +241,6 @@ class _ShellState extends ConsumerState<Shell>
         (e) => e.on && e.ping != null && e.ping! >= e.slowAt,
       ),
     );
-    // more than half of the multi-servers slow or silent: their block goes red
-    Sheen.multiAlarm = ref.watch(
-      engineProvider.select((e) {
-        if (!e.on || !e.sitesMeasured || e.rules.homeSites.isEmpty) {
-          return false;
-        }
-        final bad = e.rules.homeSites.where((k) {
-          final v = e.sites[k];
-          return v == null || v >= e.slowAt;
-        }).length;
-        return bad * 2 > e.rules.homeSites.length;
-      }),
-    );
     // the phone moved to another network: the ping's block flashes blue (Wi-Fi) or light blue (mobile data)
     final net = ref.watch(
       engineProvider.select((e) => e.on ? e.network : null),
@@ -268,8 +258,42 @@ class _ShellState extends ConsumerState<Shell>
     );
     if (country != null && _country != null && country != _country) {
       Sheen.greenAt = DateTime.now();
+      // (the multi-servers moved with it: only the country's block flashes)
+      Sheen.multiGreenAt = DateTime(2000);
     }
     if (country != null) _country = country;
+    // the server of one of the multi-servers changed: their block flashes lime, unless the server in use has just
+    // changed country with it (then only the country's block does). Not in the first moments after connecting: the
+    // groups' first picks mean nothing yet
+    final siteServers = ref.watch(
+      engineProvider.select((e) {
+        if (!e.on ||
+            e.since == null ||
+            DateTime.now().difference(e.since!) < const Duration(seconds: 45)) {
+          return '';
+        }
+        return [
+          for (final k in e.rules.homeSites)
+            if (e.siteServers[k] case final tag?) '$k=$tag',
+        ].join('|');
+      }),
+    );
+    if (siteServers.isEmpty) {
+      _siteCountries = const {};
+    } else {
+      final now = {
+        for (final x in siteServers.split('|'))
+          x.substring(0, x.indexOf('=')): x.substring(x.indexOf('=') + 1),
+      };
+      if (_siteCountries.entries.any(
+            (b) => now[b.key] != null && now[b.key] != b.value,
+          ) &&
+          DateTime.now().difference(Sheen.greenAt) >
+              const Duration(milliseconds: 3500)) {
+        Sheen.multiGreenAt = DateTime.now();
+      }
+      _siteCountries = now;
+    }
     // the VPN is off: the moving backgrounds stand still and the screen goes grey (apart from the power switch)
     final running = ref.watch(
       engineProvider.select((e) => e.phase != Phase.off),
@@ -281,6 +305,9 @@ class _ShellState extends ConsumerState<Shell>
         ref.watch(engineProvider.select((e) => e.rules.lightLook)) ||
         // Superlight: plain, short animations
         ref.watch(engineProvider.select((e) => e.rules.superLight));
+    essentialMotionNow =
+        !MediaQuery.disableAnimationsOf(context) &&
+        !ref.watch(engineProvider.select((e) => e.rules.superLight));
     // the system's back closes the page opened over the tabs (the nested navigator), the tabs go back to home, only then it leaves
     return PopScope(
       canPop: false,

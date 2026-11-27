@@ -8,6 +8,10 @@ import 'dart:math' as math;
 /// Set from the system's "remove animations": the swipes and slides then just happen.
 bool reduceMotionNow = false;
 
+/// Set by the shell: the motions that tell something is being done (the bolt measuring the servers) still run in the
+/// light look; only the system's "remove animations" and Superlight stop them.
+bool essentialMotionNow = true;
+
 /// Set by the shell: the VPN is off, so the moving backgrounds stand still (and the screen is grey, see [GreyWhenOff]).
 bool backdropFrozenNow = false;
 
